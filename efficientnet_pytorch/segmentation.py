@@ -37,3 +37,14 @@ class EfficientNetSegmentation(nn.Module):
         else:
             class_scores = self.linear(self.avgpool(hidden_state))
             return class_scores
+    
+    def freeze_layers(self):
+        '''Freezes the backbone and all current Conv2d layers.'''
+        self.backbone.requires_grad_(False)
+        for conv2d in self.conv2ds:
+            conv2d.requires_grad_(False)
+
+    def add_new_layer(self):
+        '''Adds a new Conv2d layer and resets the Linear layer.'''
+        self.conv2ds.append(nn.Conv2d(16, 16, 3))
+        self.linear.reset_parameters()
