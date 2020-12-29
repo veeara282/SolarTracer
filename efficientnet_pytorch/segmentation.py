@@ -3,7 +3,7 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 from torch.utils.data.dataloader import DataLoader
-from torch.optim import Optimizer
+from torch.optim import Optimizer, RMSprop
 from tqdm import tqdm, trange
 from torchvision.datasets import ImageFolder
 
@@ -118,8 +118,12 @@ def main():
     
     val_set = ImageFolder(root='./SPI_eval/')
     val_loader = DataLoader(val_set, batch_size=8, shuffle=True, num_workers=4)
+
+    model = EfficientNetSegmentation()
+    loss_criterion = nn.CrossEntropyLoss()
+    optimizer = RMSprop()
     
-    #TODO train_segmentation()
+    train_segmentation(model, train_loader, val_loader, loss_criterion, optimizer)
 
 if __name__ == '__main__':
     main()
