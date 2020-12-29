@@ -123,5 +123,6 @@ tf_to_pytorch/pretrained_tensorflow
 !tf_to_pytorch/pretrained_tensorflow/download.sh
 examples/imagenet/run.sh
 
-
-
+SPI_train
+SPI_val
+SPI_eval
