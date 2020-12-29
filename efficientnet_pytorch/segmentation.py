@@ -114,7 +114,7 @@ def train_segmentation(model: EfficientNetSegmentation,
 
 def main():
     train_set = ImageFolder(root='./SPI_val/')
-    train_loader = DataLoader(train_set, batch_size=8 shuffle=True, num_workers=4)
+    train_loader = DataLoader(train_set, batch_size=8, shuffle=True, num_workers=4)
     
     val_set = ImageFolder(root='./SPI_eval/')
     val_loader = DataLoader(val_set, batch_size=8, shuffle=True, num_workers=4)
