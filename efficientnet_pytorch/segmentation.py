@@ -1,11 +1,11 @@
 # TODO Implement CAM-GLWT for EfficientNet
 import torch
-from torch import nn
+from torch import nn, optim
 from torch.nn import functional as F
 from torch.utils.data.dataloader import DataLoader
-from torch.optim import Optimizer, RMSprop
 from tqdm import tqdm, trange
 from torchvision.datasets import ImageFolder
+from torchvision import transforms
 
 from .model import EfficientNet
 
@@ -25,7 +25,7 @@ class EfficientNetSegmentation(nn.Module):
         # Also, could use depthwise separable convolution instead (see MobileNet paper) --
         # it's what EfficientNet uses
         self.conv2ds.append(nn.Conv2d(16, 16, 3))
-        self.avgpool = nn.AvgPool2d()
+        self.avgpool = nn.AvgPool2d(112)
         self.linear = nn.Linear(16, 2)
         # Loss function
 
@@ -64,7 +64,7 @@ def to_device(obj):
 def train_or_eval(model: nn.Module,
                   data_loader: DataLoader,
                   loss_criterion: nn.Module,
-                  optimizer: Optimizer,
+                  optimizer: optim.Optimizer,
                   train: bool = False):
     if train:
         model.train()
@@ -74,6 +74,9 @@ def train_or_eval(model: nn.Module,
     total_loss = 0
     correct = 0
     for batch in tqdm(data_loader, leave=False, desc=("Training Batches" if train else "Validation Batches")):
+        print(len(batch))
+        print(batch[0].size())
+        print(batch[1].size())
         output = model(batch)
         total += output.size()[0]
         predicted = torch.argmax(output, 1).cpu()
@@ -100,7 +103,7 @@ def train_segmentation(model: EfficientNetSegmentation,
                        train_loader: DataLoader,
                        val_loader: DataLoader,
                        loss_criterion: nn.Module,
-                       optimizer: Optimizer):
+                       optimizer: optim.Optimizer):
     # Train the backbone
     num_epochs = 5
     for epoch in trange(num_epochs, desc='Train backbone'):
@@ -113,15 +116,20 @@ def train_segmentation(model: EfficientNetSegmentation,
         train_or_eval(model, train_loader, loss_criterion, optimizer)
 
 def main():
-    train_set = ImageFolder(root='./SPI_val/')
+    transform = transforms.Compose([
+        transforms.Resize((224, 224)),
+        transforms.ToTensor()
+    ])
+
+    train_set = ImageFolder(root='./SPI_val/', transform=transform)
     train_loader = DataLoader(train_set, batch_size=8, shuffle=True, num_workers=4)
     
-    val_set = ImageFolder(root='./SPI_eval/1/')
+    val_set = ImageFolder(root='./SPI_eval/1/', transform=transform)
     val_loader = DataLoader(val_set, batch_size=8, shuffle=True, num_workers=4)
 
     model = EfficientNetSegmentation()
     loss_criterion = nn.CrossEntropyLoss()
-    optimizer = RMSprop()
+    optimizer = optim.RMSprop(model.parameters())
     
     train_segmentation(model, train_loader, val_loader, loss_criterion, optimizer)
 
