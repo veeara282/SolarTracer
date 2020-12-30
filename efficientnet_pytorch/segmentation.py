@@ -13,7 +13,7 @@ class EfficientNetSegmentation(nn.Module):
     def __init__(self, backbone='efficientnet-b0', endpoint=1):
         super().__init__()
         # Use EfficientNet classifier as a backbone
-        self.backbone = EfficientNet.from_pretrained(backbone)
+        self.backbone = EfficientNet.from_pretrained(backbone, num_classes=2)
         # Use endpoint from reduction level i in [1, 2, 3, 4, 5]
         if endpoint in range(1, 6):
             self.endpoint = f'reduction_{endpoint}'
@@ -74,23 +74,20 @@ def train_or_eval(model: nn.Module,
     total_loss = 0
     correct = 0
     for batch in tqdm(data_loader, leave=False, desc=("Training Batches" if train else "Validation Batches")):
-        print(len(batch))
-        print(batch[0].size())
-        print(batch[1].size())
-        output = model(batch)
+        inputs, labels = batch[0], batch[1]
+        output = model(inputs)
+        print(output.size())
         total += output.size()[0]
         predicted = torch.argmax(output, 1).cpu()
-        # Labels are stored in the batch dict
-        expected_out = batch['answerable']
-        correct += (expected_out == predicted).numpy().sum()
+        correct += (labels == predicted).numpy().sum()
         if train:
             optimizer.zero_grad() 
-            loss = loss_criterion(output, to_device(expected_out))
+            loss = loss_criterion(output, to_device(labels))
             total_loss += loss.item()
             loss.backward()
             optimizer.step()
         else:
-            total_loss += loss_criterion(output, to_device(expected_out)).item()
+            total_loss += loss_criterion(output, to_device(labels)).item()
     total_loss /= total
     # Print accuracy
     print('Training Results:' if train else 'Validation Results:')
