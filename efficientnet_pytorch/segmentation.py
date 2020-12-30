@@ -73,10 +73,9 @@ def train_or_eval(model: nn.Module,
     total = 0
     total_loss = 0
     correct = 0
-    for batch in tqdm(data_loader, leave=False, desc=("Training Batches" if train else "Validation Batches")):
+    for batch in tqdm(data_loader, desc=("Training Batches" if train else "Validation Batches")):
         inputs, labels = batch[0], batch[1]
-        output = model(inputs)
-        print(output.size())
+        output = model(to_device(inputs))
         total += output.size()[0]
         predicted = torch.argmax(output, 1).cpu()
         correct += (labels == predicted).numpy().sum()
@@ -124,8 +123,8 @@ def main():
     val_set = ImageFolder(root='./SPI_eval/1/', transform=transform)
     val_loader = DataLoader(val_set, batch_size=8, shuffle=True, num_workers=4)
 
-    model = EfficientNetSegmentation()
-    loss_criterion = nn.CrossEntropyLoss()
+    model = to_device(EfficientNetSegmentation())
+    loss_criterion = to_device(nn.CrossEntropyLoss())
     optimizer = optim.RMSprop(model.parameters())
     
     train_segmentation(model, train_loader, val_loader, loss_criterion, optimizer)
