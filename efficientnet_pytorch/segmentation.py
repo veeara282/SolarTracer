@@ -24,7 +24,7 @@ class EfficientNetSegmentation(nn.Module):
         # TODO Extract channel count from .utils module
         # Also, could use depthwise separable convolution instead (see MobileNet paper) --
         # it's what EfficientNet uses
-        self.conv2ds.append(nn.Conv2d(16, 16, 3))
+        self.conv2ds.append(nn.Conv2d(16, 16, 3, padding=1))
         self.avgpool = nn.AvgPool2d(112)
         self.linear = nn.Linear(16, 2)
         # Loss function
@@ -40,7 +40,8 @@ class EfficientNetSegmentation(nn.Module):
             class_activation_map = self.linear(hidden_state)
             return class_activation_map
         else:
-            class_scores = self.linear(self.avgpool(hidden_state))
+            avgpool = torch.squeeze(self.avgpool(hidden_state))
+            class_scores = self.linear(avgpool)
             return class_scores
     
     def freeze_backbone(self):
@@ -102,9 +103,9 @@ def train_segmentation(model: EfficientNetSegmentation,
                        optimizer: optim.Optimizer):
     # Train the backbone
     num_epochs = 1
-    for epoch in trange(num_epochs, desc='Train backbone'):
-        train_or_eval(model.backbone, train_loader, loss_criterion, optimizer, train=True)
-        train_or_eval(model.backbone, val_loader, loss_criterion, optimizer)
+    # for epoch in trange(num_epochs, desc='Train backbone'):
+    #     train_or_eval(model.backbone, train_loader, loss_criterion, optimizer, train=True)
+    #     train_or_eval(model.backbone, val_loader, loss_criterion, optimizer)
     # Train the segmentation branch. At first, this branch has one conv2d layer and a linear layer.
     model.freeze_backbone()
     for epoch in trange(num_epochs, desc='Train segmentation branch'):
