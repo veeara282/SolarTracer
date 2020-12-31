@@ -24,11 +24,11 @@ class EfficientNetSegmentation(nn.Module):
         # TODO Extract channel count from .utils module
         # Also, could use depthwise separable convolution instead (see MobileNet paper) --
         # it's what EfficientNet uses
-        self.conv2ds.append(nn.Conv2d(16, 16, 3, padding=1))
+        self.conv2ds.append(self.new_conv2d_layer())
         self.avgpool = nn.AvgPool2d(112)
         self.linear = nn.Linear(16, 2)
         # Loss function
-
+    
     def forward(self, inputs, return_cam=False):
         # Extract hidden state from middle of EfficientNet
         hidden_state = self.backbone.extract_endpoints(inputs)[self.endpoint]
@@ -44,6 +44,9 @@ class EfficientNetSegmentation(nn.Module):
             class_scores = self.linear(avgpool)
             return class_scores
     
+    def new_conv2d_layer(self):
+        return nn.Conv2d(16, 16, 3, padding=1)
+
     def freeze_backbone(self):
         '''Freezes the backbone.'''
         self.backbone.requires_grad_(False)
@@ -55,7 +58,7 @@ class EfficientNetSegmentation(nn.Module):
 
     def add_new_layer(self):
         '''Adds a new Conv2d layer and resets the Linear layer.'''
-        self.conv2ds.append(nn.Conv2d(16, 16, 3))
+        self.conv2ds.append(self.new_conv2d_layer())
         self.linear.reset_parameters()
 
 def to_device(obj):
