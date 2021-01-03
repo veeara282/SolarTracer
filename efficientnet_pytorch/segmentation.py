@@ -115,21 +115,21 @@ def train_segmentation(model: EfficientNetSegmentation,
                        loss_criterion: nn.Module,
                        optimizer: optim.Optimizer):
     # Train the backbone
-    num_epochs = 1
-    # for epoch in trange(num_epochs, desc='Train backbone'):
-    #     train_or_eval(model.backbone, train_loader, loss_criterion, optimizer, train=True)
-    #     train_or_eval(model.backbone, val_loader, loss_criterion, optimizer)
+    num_epochs = 2
+    for epoch in trange(num_epochs, desc='Train backbone'):
+        train_or_eval(model.backbone, train_loader, loss_criterion, optimizer, train=True)
+        train_or_eval(model.backbone, val_loader, loss_criterion, optimizer)
     # Train the segmentation branch. At first, this branch has one conv2d layer and a linear layer.
     model.freeze_backbone()
     for epoch in trange(num_epochs, desc='Train segmentation branch'):
         train_or_eval(model, train_loader, loss_criterion, optimizer, train=True)
-        train_or_eval(model, train_loader, loss_criterion, optimizer)
+        train_or_eval(model, val_loader, loss_criterion, optimizer)
     # Freeze current conv2d branch layers, then add a new one
     model.freeze_conv2d_layers()
     model.add_new_layer()
     for epoch in trange(num_epochs, desc='Train segmentation branch'):
         train_or_eval(model, train_loader, loss_criterion, optimizer, train=True)
-        train_or_eval(model, train_loader, loss_criterion, optimizer)
+        train_or_eval(model, val_loader, loss_criterion, optimizer)
 
 def main():
     transform = transforms.Compose([
