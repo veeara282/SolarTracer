@@ -77,12 +77,16 @@ def train_or_eval(model: nn.Module,
     total = 0
     total_loss = 0
     correct = 0
+    true_pos, all_true, all_pos = 0, 0, 0
     for batch in tqdm(data_loader, desc=("Training Batches" if train else "Validation Batches")):
         inputs, labels = batch[0], batch[1]
         output = model(to_device(inputs))
         total += output.size()[0]
         predicted = torch.argmax(output, 1).cpu()
         correct += (labels == predicted).numpy().sum()
+        true_pos += (labels & predicted).numpy().sum()
+        all_true += labels.numpy().sum()
+        all_pos += predicted.numpy().sum()
         if train:
             optimizer.zero_grad() 
             loss = loss_criterion(output, to_device(labels))
@@ -92,10 +96,16 @@ def train_or_eval(model: nn.Module,
         else:
             total_loss += loss_criterion(output, to_device(labels)).item()
     total_loss /= total
+    precision = true_pos / all_pos
+    recall = true_pos / all_true
+    f1 = 2 * precision * recall / (precision + recall)
     # Print accuracy
     print('Training Results:' if train else 'Validation Results:')
     print(f'Loss: {total_loss:.4f}')
     print(f'Correct: {correct} ({correct / total:.2%})')
+    print(f'Precision: {true_pos} / {all_pos} ({precision:.2%})')
+    print(f'Recall: {true_pos} / {all_true} ({recall:.2%})')
+    print(f'F1: {f1:.2%}')
     print(f'Total: {total}\n')
 
 
