@@ -138,8 +138,11 @@ def main():
     val_set = ImageFolder(root='./SPI_eval/1/', transform=transform)
     val_loader = DataLoader(val_set, batch_size=8, shuffle=True, num_workers=4)
 
+    pos_class_weight = 0
+    class_weights = torch.FloatTensor([1.0, pos_class_weight])
+    loss_criterion = to_device(nn.CrossEntropyLoss(weight=class_weights))
+
     model = to_device(EfficientNetSegmentation())
-    loss_criterion = to_device(nn.CrossEntropyLoss())
     optimizer = optim.RMSprop(model.parameters())
     
     train_segmentation(model, train_loader, val_loader, loss_criterion, optimizer)
