@@ -10,7 +10,7 @@ from torchvision import transforms
 from .model import EfficientNet
 
 class EfficientNetSegmentation(nn.Module):
-    def __init__(self, backbone='efficientnet-b0', endpoint=1):
+    def __init__(self, backbone='efficientnet-b0', endpoint=1, pos_class_weight=2.0):
         super().__init__()
         # Use EfficientNet classifier as a backbone
         self.backbone = EfficientNet.from_pretrained(backbone, num_classes=2)
@@ -27,6 +27,8 @@ class EfficientNetSegmentation(nn.Module):
         self.avgpool = nn.AvgPool2d(112)
         self.linear = nn.Linear(16, 2)
         # Loss function
+        class_weights = torch.FloatTensor([1.0, pos_class_weight])
+        self.loss_criterion = nn.CrossEntropyLoss(weight=class_weights)
     
     def forward(self, inputs, return_cam=False):
         # Extract hidden state from middle of EfficientNet
@@ -66,7 +68,6 @@ def to_device(obj):
 
 def train_or_eval(model: nn.Module,
                   data_loader: DataLoader,
-                  loss_criterion: nn.Module,
                   optimizer: optim.Optimizer,
                   train: bool = False):
     if train:
@@ -88,12 +89,12 @@ def train_or_eval(model: nn.Module,
         all_pos += predicted.numpy().sum()
         if train:
             optimizer.zero_grad() 
-            loss = loss_criterion(output, to_device(labels))
+            loss = model.loss_criterion(output, to_device(labels))
             total_loss += loss.item()
             loss.backward()
             optimizer.step()
         else:
-            total_loss += loss_criterion(output, to_device(labels)).item()
+            total_loss += model.loss_criterion(output, to_device(labels)).item()
     total_loss /= total
     precision = true_pos / all_pos
     recall = true_pos / all_true
@@ -111,7 +112,6 @@ def train_or_eval(model: nn.Module,
 def train_segmentation(model: EfficientNetSegmentation,
                        train_loader: DataLoader,
                        val_loader: DataLoader,
-                       loss_criterion: nn.Module,
                        optimizer: optim.Optimizer):
     # Don't train the backbone
     model.freeze_backbone()
@@ -122,8 +122,8 @@ def train_segmentation(model: EfficientNetSegmentation,
     for layer_num in trange(num_layers_branch, desc='Build segmentation branch'):
         model.add_conv2d_layer()
         for epoch in trange(num_epochs, desc=f'Train branch layer {layer_num}'):
-            train_or_eval(model, train_loader, loss_criterion, optimizer, train=True)
-            # train_or_eval(model, val_loader, loss_criterion, optimizer)
+            train_or_eval(model, train_loader, optimizer, train=True)
+            # train_or_eval(model, val_loader, optimizer)
         model.freeze_conv2d_layers()
 
 def main():
@@ -138,14 +138,10 @@ def main():
     val_set = ImageFolder(root='./SPI_eval/1/', transform=transform)
     val_loader = DataLoader(val_set, batch_size=8, shuffle=True, num_workers=4)
 
-    pos_class_weight = 0
-    class_weights = torch.FloatTensor([1.0, pos_class_weight])
-    loss_criterion = to_device(nn.CrossEntropyLoss(weight=class_weights))
-
     model = to_device(EfficientNetSegmentation())
     optimizer = optim.RMSprop(model.parameters())
     
-    train_segmentation(model, train_loader, val_loader, loss_criterion, optimizer)
+    train_segmentation(model, train_loader, val_loader, optimizer)
 
 if __name__ == '__main__':
     main()
