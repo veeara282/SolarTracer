@@ -126,3 +126,4 @@ examples/imagenet/run.sh
 SPI_train
 SPI_val
 SPI_eval
+SPI_test

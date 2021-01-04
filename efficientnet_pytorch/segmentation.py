@@ -24,7 +24,6 @@ class EfficientNetSegmentation(nn.Module):
         # TODO Extract channel count from .utils module
         # Also, could use depthwise separable convolution instead (see MobileNet paper) --
         # it's what EfficientNet uses
-        self.conv2ds.append(self.new_conv2d_layer())
         self.avgpool = nn.AvgPool2d(112)
         self.linear = nn.Linear(16, 2)
         # Loss function
@@ -56,7 +55,7 @@ class EfficientNetSegmentation(nn.Module):
         for conv2d in self.conv2ds:
             conv2d.requires_grad_(False)
 
-    def add_new_layer(self):
+    def add_conv2d_layer(self):
         '''Adds a new Conv2d layer and resets the Linear layer.'''
         self.conv2ds.append(self.new_conv2d_layer())
         self.linear.reset_parameters()
@@ -114,22 +113,18 @@ def train_segmentation(model: EfficientNetSegmentation,
                        val_loader: DataLoader,
                        loss_criterion: nn.Module,
                        optimizer: optim.Optimizer):
-    # Train the backbone
-    num_epochs = 2
-    for epoch in trange(num_epochs, desc='Train backbone'):
-        train_or_eval(model.backbone, train_loader, loss_criterion, optimizer, train=True)
-        train_or_eval(model.backbone, val_loader, loss_criterion, optimizer)
-    # Train the segmentation branch. At first, this branch has one conv2d layer and a linear layer.
+    # Don't train the backbone
     model.freeze_backbone()
-    for epoch in trange(num_epochs, desc='Train segmentation branch'):
-        train_or_eval(model, train_loader, loss_criterion, optimizer, train=True)
-        train_or_eval(model, val_loader, loss_criterion, optimizer)
-    # Freeze current conv2d branch layers, then add a new one
-    model.freeze_conv2d_layers()
-    model.add_new_layer()
-    for epoch in trange(num_epochs, desc='Train segmentation branch'):
-        train_or_eval(model, train_loader, loss_criterion, optimizer, train=True)
-        train_or_eval(model, val_loader, loss_criterion, optimizer)
+    # Number of layers to add and number of epochs per layer
+    num_layers_branch = 3
+    num_epochs = 3
+    # Train the segmentation branch. At first, this branch has no conv2d layers and a linear layer.
+    for layer_num in trange(num_layers_branch, desc='Build segmentation branch'):
+        model.add_conv2d_layer()
+        for epoch in trange(num_epochs, desc=f'Train branch layer {layer_num}'):
+            train_or_eval(model, train_loader, loss_criterion, optimizer, train=True)
+            # train_or_eval(model, val_loader, loss_criterion, optimizer)
+        model.freeze_conv2d_layers()
 
 def main():
     transform = transforms.Compose([
