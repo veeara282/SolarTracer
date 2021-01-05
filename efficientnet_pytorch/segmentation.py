@@ -138,7 +138,7 @@ def main():
     val_set = ImageFolder(root='./SPI_eval/1/', transform=transform)
     val_loader = DataLoader(val_set, batch_size=8, shuffle=True, num_workers=4)
 
-    model = to_device(EfficientNetSegmentation())
+    model = to_device(EfficientNetSegmentation(pos_class_weight=8.0))
     optimizer = optim.RMSprop(model.parameters())
     
     train_segmentation(model, train_loader, val_loader, optimizer)
