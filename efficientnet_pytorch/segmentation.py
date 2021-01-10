@@ -9,6 +9,10 @@ from torchvision import transforms
 
 from .model import EfficientNet
 
+def to_device(obj):
+    device = "cuda:0" if torch.cuda.is_available() else "cpu"
+    return obj.to(device)
+
 class EfficientNetSegmentation(nn.Module):
     def __init__(self, backbone='efficientnet-b0', endpoint=1, pos_class_weight=2.0):
         super().__init__()
@@ -46,7 +50,8 @@ class EfficientNetSegmentation(nn.Module):
             return class_scores
     
     def new_conv2d_layer(self):
-        return nn.Conv2d(16, 16, 3, padding=1)
+        # Each new Conv2d layer must be transferred to the same device as the network
+        return to_device(nn.Conv2d(16, 16, 3, padding=1))
 
     def freeze_backbone(self):
         '''Freezes the backbone.'''
@@ -61,10 +66,6 @@ class EfficientNetSegmentation(nn.Module):
         '''Adds a new Conv2d layer and resets the Linear layer.'''
         self.conv2ds.append(self.new_conv2d_layer())
         self.linear.reset_parameters()
-
-def to_device(obj):
-    device = "cuda:0" if torch.cuda.is_available() else "cpu"
-    return obj.to(device)
 
 def train_or_eval(model: nn.Module,
                   data_loader: DataLoader,
