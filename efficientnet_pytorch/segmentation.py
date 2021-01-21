@@ -13,6 +13,18 @@ def to_device(obj):
     device = "cuda:0" if torch.cuda.is_available() else "cpu"
     return obj.to(device)
 
+def cam_resolution(backbone='efficientnet-b0', endpoint=1):
+    if endpoint in range(1, 6):
+        return 224 // (2 ** endpoint)
+    else:
+        raise ValueError('endpoint must be an integer between 1 and 5, inclusive')
+
+def num_channels(backbone='efficientnet-b0', endpoint=1):
+    if endpoint in range(1, 6):
+        return [16, 24, 40, 112, 1280][endpoint - 1]
+    else:
+        raise ValueError('endpoint must be an integer between 1 and 5, inclusive')
+
 class EfficientNetSegmentation(nn.Module):
     def __init__(self, backbone='efficientnet-b0', endpoint=1, pos_class_weight=2.0):
         super().__init__()
@@ -22,18 +34,19 @@ class EfficientNetSegmentation(nn.Module):
         if endpoint in range(1, 6):
             self.endpoint = f'reduction_{endpoint}'
         else:
-            raise ValueError('endpoint must be between 1 and 5, inclusive')
+            raise ValueError('endpoint must be an integer between 1 and 5, inclusive')
         # Create some number of Conv2d's followed by an AvgPool2d and Linear
         self.conv2ds = []
         # TODO Extract channel count from .utils module
         # Also, could use depthwise separable convolution instead (see MobileNet paper) --
         # it's what EfficientNet uses
-        self.avgpool = nn.AvgPool2d(112)
-        self.linear = nn.Linear(16, 2)
+        self.avgpool = nn.AvgPool2d(cam_resolution(endpoint=endpoint))
+        self.num_channels = num_channels(endpoint=endpoint)
+        self.linear = nn.Linear(self.num_channels, 2)
         # Loss function
         class_weights = torch.FloatTensor([1.0, pos_class_weight])
         self.loss_criterion = nn.CrossEntropyLoss(weight=class_weights)
-    
+
     def forward(self, inputs, return_cam=False):
         # Extract hidden state from middle of EfficientNet
         hidden_state = self.backbone.extract_endpoints(inputs)[self.endpoint]
@@ -42,6 +55,8 @@ class EfficientNetSegmentation(nn.Module):
             hidden_state = conv2d(hidden_state)
         # Return either scores or activation map
         if return_cam:
+            # Channel dimension needs to be at the end for nn.Linear to work
+            hidden_state = torch.movedim(hidden_state, 1, -1)
             class_activation_map = self.linear(hidden_state)
             return class_activation_map
         else:
@@ -50,8 +65,7 @@ class EfficientNetSegmentation(nn.Module):
             return class_scores
     
     def new_conv2d_layer(self):
-        # Each new Conv2d layer must be transferred to the same device as the network
-        return to_device(nn.Conv2d(16, 16, 3, padding=1))
+        return to_device(nn.Conv2d(self.num_channels, self.num_channels, 3, padding=1))
 
     def freeze_backbone(self):
         '''Freezes the backbone.'''
