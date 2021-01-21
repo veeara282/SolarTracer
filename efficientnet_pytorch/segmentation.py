@@ -138,7 +138,7 @@ def train_segmentation(model: EfficientNetSegmentation,
         model.add_conv2d_layer()
         for epoch in trange(num_epochs, desc=f'Train branch layer {layer_num}'):
             train_or_eval(model, train_loader, optimizer, train=True)
-            # train_or_eval(model, val_loader, optimizer)
+            train_or_eval(model, val_loader, optimizer)
         model.freeze_conv2d_layers()
 
 def main():
@@ -147,11 +147,11 @@ def main():
         transforms.ToTensor()
     ])
 
-    train_set = ImageFolder(root='./SPI_val/', transform=transform)
-    train_loader = DataLoader(train_set, batch_size=8, shuffle=True, num_workers=4)
+    train_set = ImageFolder(root='./SPI_train/', transform=transform)
+    train_loader = DataLoader(train_set, batch_size=48, shuffle=True, num_workers=4)
     
-    val_set = ImageFolder(root='./SPI_eval/1/', transform=transform)
-    val_loader = DataLoader(val_set, batch_size=8, shuffle=True, num_workers=4)
+    val_set = ImageFolder(root='./SPI_val/', transform=transform)
+    val_loader = DataLoader(val_set, batch_size=48, shuffle=True, num_workers=4)
 
     model = to_device(EfficientNetSegmentation(pos_class_weight=8.0))
     optimizer = optim.RMSprop(model.parameters())
