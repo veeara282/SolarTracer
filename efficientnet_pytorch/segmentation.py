@@ -144,7 +144,7 @@ def train_segmentation(model: EfficientNetSegmentation,
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train and store the model')
-    parser.add_argument('-o', '--out', metavar='model.pth')
+    parser.add_argument('-o', '--out', metavar='model.pth', default='model.pth')
     parser.add_argument('-w', '--pos-class-weight', type=float, default=8.0)
     parser.add_argument('-b', '--batch-size', type=int, default=48)
     return parser.parse_args()
