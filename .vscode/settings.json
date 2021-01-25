@@ -1,0 +1,12 @@
+{
+    "files.watcherExclude": {
+        "**/.git/objects/**": true,
+        "**/.git/subtree-cache/**": true,
+        "**/node_modules/**": true,
+        "**/.hg/store/**": true,
+        // Don't watch changes in the dataset
+        "**/SPI_train/**": true,
+        "**/SPI_val/**": true,
+        "**/SPI_eval/**": true
+    }
+}
