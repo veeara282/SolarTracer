@@ -8,6 +8,7 @@ from torchvision.datasets import ImageFolder
 from torchvision import transforms
 
 from .model import EfficientNet
+import argparse
 
 def to_device(obj):
     device = "cuda:0" if torch.cuda.is_available() else "cpu"
@@ -141,22 +142,33 @@ def train_segmentation(model: EfficientNetSegmentation,
             train_or_eval(model, val_loader, optimizer)
         model.freeze_conv2d_layers()
 
+def parse_args():
+    parser = argparse.ArgumentParser(description='Train and store the model')
+    parser.add_argument('-o', '--out', metavar='model.pth')
+    parser.add_argument('-w', '--pos-class-weight', type=float, default=8.0)
+    parser.add_argument('-b', '--batch-size', type=int, default=48)
+    return parser.parse_args()
+
 def main():
+    args = parse_args()
+
     transform = transforms.Compose([
         transforms.Resize((224, 224)),
         transforms.ToTensor()
     ])
 
     train_set = ImageFolder(root='./SPI_train/', transform=transform)
-    train_loader = DataLoader(train_set, batch_size=48, shuffle=True, num_workers=4)
+    train_loader = DataLoader(train_set, batch_size=args.batch_size, shuffle=True, num_workers=4)
     
     val_set = ImageFolder(root='./SPI_val/', transform=transform)
-    val_loader = DataLoader(val_set, batch_size=48, shuffle=True, num_workers=4)
+    val_loader = DataLoader(val_set, batch_size=args.batch_size, shuffle=True, num_workers=4)
 
-    model = to_device(EfficientNetSegmentation(pos_class_weight=8.0))
+    model = to_device(EfficientNetSegmentation(pos_class_weight=args.pos_class_weight))
     optimizer = optim.RMSprop(model.parameters())
     
     train_segmentation(model, train_loader, val_loader, optimizer)
+
+    torch.save(model.state_dict(), args.out)
 
 if __name__ == '__main__':
     main()
