@@ -3,7 +3,7 @@ from torch.utils.data import ConcatDataset
 from torch.utils.data.dataloader import DataLoader
 from torchvision.datasets import ImageFolder
 
-from .segmentation import EfficientNetSegmentation, transform, train_or_eval
+from .segmentation import EfficientNetSegmentation, to_device, transform, train_or_eval
 import argparse
 import os
 import re
@@ -30,7 +30,7 @@ def main():
     args = parse_args()
 
     # Read model file
-    model = EfficientNetSegmentation()
+    model = to_device(EfficientNetSegmentation())
     model.load_state_dict(torch.load(args.model))
     model.eval()
 
