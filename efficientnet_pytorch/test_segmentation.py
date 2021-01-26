@@ -38,6 +38,9 @@ def main():
     test_set = ImageFolder(root='./SPI_eval/', transform=transform)
     test_loader = DataLoader(test_set, batch_size=args.batch_size, shuffle=True, num_workers=4)
 
+    print(test_set.classes)
+    assert len(test_set.classes) == 2
+
     # Evaluate
     train_or_eval(model, test_loader)
 
