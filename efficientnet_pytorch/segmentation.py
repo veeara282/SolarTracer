@@ -1,7 +1,6 @@
 # TODO Implement CAM-GLWT for EfficientNet
 import torch
 from torch import nn, optim
-from torch.nn import functional as F
 from torch.utils.data.dataloader import DataLoader
 from tqdm import tqdm, trange
 from torchvision.datasets import ImageFolder
@@ -84,7 +83,7 @@ class EfficientNetSegmentation(nn.Module):
 
 def train_or_eval(model: nn.Module,
                   data_loader: DataLoader,
-                  optimizer: optim.Optimizer,
+                  optimizer: optim.Optimizer = None,
                   train: bool = False):
     if train:
         model.train()
@@ -142,6 +141,11 @@ def train_segmentation(model: EfficientNetSegmentation,
             train_or_eval(model, val_loader, optimizer)
         model.freeze_conv2d_layers()
 
+transform = transforms.Compose([
+    transforms.Resize((224, 224)),
+    transforms.ToTensor()
+])
+
 def parse_args():
     parser = argparse.ArgumentParser(description='Train and store the model')
     parser.add_argument('-o', '--out', metavar='model.pth', default='model.pth')
@@ -151,11 +155,6 @@ def parse_args():
 
 def main():
     args = parse_args()
-
-    transform = transforms.Compose([
-        transforms.Resize((224, 224)),
-        transforms.ToTensor()
-    ])
 
     train_set = ImageFolder(root='./SPI_train/', transform=transform)
     train_loader = DataLoader(train_set, batch_size=args.batch_size, shuffle=True, num_workers=4)
