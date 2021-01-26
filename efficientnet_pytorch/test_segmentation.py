@@ -35,7 +35,7 @@ def main():
     model.eval()
 
     # Set up test set
-    test_set = ImageFolder(root='./SPI_eval/', transform=transform)
+    test_set = classification_test_set(root='./SPI_eval/', transform=transform)
     test_loader = DataLoader(test_set, batch_size=args.batch_size, shuffle=True, num_workers=4)
 
     print(test_set.classes)
