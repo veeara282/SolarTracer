@@ -14,7 +14,9 @@ def classification_test_set(root, **kwargs):
     
     # Create an ImageFolder for each one and exclude the *_true_seg.png files
     def is_input_image(filename: str) -> bool:
-        return bool(re.match('\\d+\\.\\w+', filename))
+        # filename is the full path, not just the base name of the file
+        # re.search matches anywhere in the string, whereas re.match only matches the beginning
+        return bool(re.search('\\d+\\.\\w+', filename))
     subsets = [ImageFolder(subdir, is_valid_file=is_input_image, **kwargs) for subdir in subdirs]
 
     # Add them all to a ConcatDataset
