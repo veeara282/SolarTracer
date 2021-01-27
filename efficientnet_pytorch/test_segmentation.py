@@ -1,7 +1,8 @@
 import torch
-from torch.utils.data import ConcatDataset
+from torch.utils.data import Dataset, ConcatDataset
 from torch.utils.data.dataloader import DataLoader
 from torchvision.datasets import ImageFolder
+from torchvision import transforms
 
 from .segmentation import EfficientNetSegmentation, to_device, transform, train_or_eval
 import argparse
@@ -16,11 +17,46 @@ def classification_test_set(root, **kwargs):
     def is_input_image(filename: str) -> bool:
         # filename is the full path, not just the base name of the file
         # re.search matches anywhere in the string, whereas re.match only matches the beginning
-        return bool(re.search('\\d+\\.\\w+', filename))
+        return bool(re.search(r'\d+\.\w+', filename))
     subsets = [ImageFolder(subdir, is_valid_file=is_input_image, **kwargs) for subdir in subdirs]
 
     # Add them all to a ConcatDataset
     return ConcatDataset(subsets)
+
+target_transform = transforms.Compose([
+    transforms.Grayscale(num_output_channels=1),
+    transforms.Resize((112, 112)),
+    transforms.ToTensor()
+    # FIXME PyTorch documentation says ToTensor should not be used to transform target image masks
+])
+
+class SegmentationTestSet(Dataset):
+    def __init__(self, root, transform = transform, target_transform = target_transform):
+        self.root = root
+        # TODO create an index of (image, mask) file path pairs
+        self.samples = []
+
+    def __getitem__(self, index: int):
+        pass
+
+    def __len__(self):
+        pass
+
+
+def segmentation_test_set(root, **kwargs):
+    # Enumerate the subfolders of SPI_eval that contain positive examples (1/ folders)
+    subdirs = [entry.path for entry in os.scandir(root) 
+        if entry.is_dir() and '1' in os.listdir(entry)]
+
+    pos_dir=[]
+    for subdir in subdirs:
+        folders = [entry.path for entry in os.scandir(subdir) if entry.is_dir() ]
+        for folder in folders:
+            pos_dir.append(folder) 
+
+    #Create ImageFolder for positive example/true_seg pair
+    pass
+    
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Evaluate the model on the test set')
