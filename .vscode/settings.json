@@ -8,6 +8,5 @@
         "**/SPI_train/**": true,
         "**/SPI_val/**": true,
         "**/SPI_eval/**": true
-    },
-    "python.pythonPath": "C:\\ProgramData\\Anaconda3\\python.exe"
+    }
 }
