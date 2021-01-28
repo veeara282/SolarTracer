@@ -23,11 +23,18 @@ def classification_test_set(root, **kwargs):
     # Add them all to a ConcatDataset
     return ConcatDataset(subsets)
 
+def threshold(image_mask: torch.FloatTensor) -> torch.LongTensor:
+    '''Converts a FloatTensor to a binary LongTensor using a threshold.'''
+    return (image_mask > 0.6).to(torch.long)
+
+# The transformation applied to image segmentation masks.
+# Image masks are 8-bit grayscale PNG images (mode L), so transforms.Grayscale is a no-op.
 target_transform = transforms.Compose([
+    # no-op, but just in case the image format is different from expected
     transforms.Grayscale(num_output_channels=1),
     transforms.Resize((112, 112)),
-    transforms.ToTensor()
-    # FIXME PyTorch documentation says ToTensor should not be used to transform target image masks
+    transforms.ToTensor(),
+    transforms.Lambda(threshold)
 ])
 
 class SegmentationTestSet(Dataset):
