@@ -42,27 +42,20 @@ class SegmentationTestSet(Dataset):
         self.root = root
         # TODO create an index of (image, mask) file path pairs
         self.samples = []
-
+        for subdir in [entry.path for entry in os.scandir(root) if entry.is_dir() and '1' in os.listdir(entry)]:
+            #iterate through only positive folders (/1)
+            pos_dirs = [entry.path for entry in os.scandir(subdir) if entry.is_dir() and entry.name == '1']
+            for pos_dir in pos_dirs:
+                valid_imgs = [img for img in os.listdir(pos_dir) if re.search(r'(\d+)\.\w+', img)]
+                for img in valid_imgs:
+                    stem = re.search(r'\d+', img).group()
+                    self.samples.append((img, f"{stem}_true_seg.png"))
+                
     def __getitem__(self, index: int):
         pass
 
     def __len__(self):
-        pass
-
-
-def segmentation_test_set(root, **kwargs):
-    # Enumerate the subfolders of SPI_eval that contain positive examples (1/ folders)
-    subdirs = [entry.path for entry in os.scandir(root) 
-        if entry.is_dir() and '1' in os.listdir(entry)]
-
-    pos_dir=[]
-    for subdir in subdirs:
-        folders = [entry.path for entry in os.scandir(subdir) if entry.is_dir() ]
-        for folder in folders:
-            pos_dir.append(folder) 
-
-    #Create ImageFolder for positive example/true_seg pair
-    pass
+        return len(self.samples)
     
 
 def parse_args():
