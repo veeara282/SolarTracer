@@ -78,8 +78,8 @@ def eval_segmentation(model: torch.nn.Module, data_loader: DataLoader):
         outputs = threshold(output_cams)
         masks = to_device(masks)
         # Compute Jaccard similarity for each example
-        intersection = torch.logical_and(outputs, masks, dtype=torch.uint8)
-        union = torch.logical_or(outputs, masks, dtype=torch.uint8)
+        intersection = torch.logical_and(outputs, masks).to(torch.uint8)
+        union = torch.logical_or(outputs, masks).to(torch.uint8)
         count_intersection = torch.sum(intersection, dim=(1, 2))
         count_union = torch.sum(union, dim=(1, 2))
         total_jaccard += torch.sum(count_intersection / count_union).cpu().item()
