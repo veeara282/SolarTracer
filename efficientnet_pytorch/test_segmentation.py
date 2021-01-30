@@ -73,11 +73,16 @@ def main():
     model.eval()
 
     # Set up test set
-    test_set = classification_test_set(root='./SPI_eval/', transform=transform)
-    test_loader = DataLoader(test_set, batch_size=args.batch_size, shuffle=True, num_workers=4)
+    test_set_class = classification_test_set(root='./SPI_eval/', transform=transform)
+    test_loader_class = DataLoader(test_set_class, batch_size=args.batch_size, shuffle=True, num_workers=4)
+    test_set_seg = ImageFolder(SegmentationTestSet(root='./SPI_eval/'))
+    test_loader_seg = DataLoader(test_set_seg, batch_size=args.batch_size, shuffle=True, num_workers=4)
 
     # Evaluate
     train_or_eval(model, test_loader)
+
+    # Check length of segmentation test set
+    print(len(test_set_seg))
 
 if __name__ == '__main__':
     main()
