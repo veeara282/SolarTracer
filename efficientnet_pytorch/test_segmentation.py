@@ -57,13 +57,16 @@ class SegmentationTestSet(Dataset):
     def __getitem__(self, index: int):
         img_path, mask_path = self.samples[index]
         img, mask = Image.open(img_path), Image.open(mask_path)
-        img = self.transform(img)
+        img = self.transform(img.convert('RGB'))
         mask = self.target_transform(mask)
         return img, mask
 
     def __len__(self):
         return len(self.samples)
-    
+
+def eval_segmentation(model: torch.nn.Module, data_loader: DataLoader):
+    pass
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Evaluate the model on the test set')
@@ -85,14 +88,9 @@ def main():
     test_set_seg = SegmentationTestSet(root='./SPI_eval/')
     test_loader_seg = DataLoader(test_set_seg, batch_size=args.batch_size, shuffle=True, num_workers=4)
 
-    # Check length of segmentation test set
-    print(len(test_set_seg))
-
-    batch = next(iter(test_loader_seg))
-    print(type(batch))
-
     # Evaluate
-    # train_or_eval(model, test_loader_seg)
+    train_or_eval(model, test_loader_class)
+    eval_segmentation(model, test_loader_seg)
 
 if __name__ == '__main__':
     main()
