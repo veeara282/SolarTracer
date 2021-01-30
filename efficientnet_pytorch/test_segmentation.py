@@ -3,6 +3,7 @@ from torch.utils.data import Dataset, ConcatDataset
 from torch.utils.data.dataloader import DataLoader
 from torchvision.datasets import ImageFolder
 from torchvision import transforms
+from PIL import Image
 
 from .segmentation import EfficientNetSegmentation, to_device, transform, train_or_eval
 import argparse
@@ -50,9 +51,15 @@ class SegmentationTestSet(Dataset):
                 for img in valid_imgs:
                     stem = re.search(r'\d+', img).group()
                     self.samples.append((img, f"{stem}_true_seg.png"))
+        self.transform = transform
+        self.target_transform = target_transform
                 
     def __getitem__(self, index: int):
-        pass
+        img_path, mask_path = self.samples[index]
+        img, mask = Image.open(img_path), Image.open(mask_path)
+        img = self.transform(img)
+        mask = self.target_transform(mask)
+        return img, mask
 
     def __len__(self):
         return len(self.samples)
@@ -78,11 +85,11 @@ def main():
     test_set_seg = SegmentationTestSet(root='./SPI_eval/')
     test_loader_seg = DataLoader(test_set_seg, batch_size=args.batch_size, shuffle=True, num_workers=4)
 
-    # Evaluate
-    train_or_eval(model, test_loader_seg)
-
     # Check length of segmentation test set
     print(len(test_set_seg))
+
+    # Evaluate
+    # train_or_eval(model, test_loader_seg)
 
 if __name__ == '__main__':
     main()
