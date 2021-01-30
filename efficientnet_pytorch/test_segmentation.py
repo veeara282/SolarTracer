@@ -111,7 +111,7 @@ def main():
     test_loader_seg = DataLoader(test_set_seg, batch_size=args.batch_size, shuffle=True, num_workers=4)
 
     # Evaluate
-    train_or_eval(model, test_loader_class)
+    # train_or_eval(model, test_loader_class)
     eval_segmentation(model, test_loader_seg)
 
 if __name__ == '__main__':
