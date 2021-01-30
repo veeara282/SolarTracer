@@ -43,6 +43,8 @@ class EfficientNetSegmentation(nn.Module):
         self.avgpool = nn.AvgPool2d(cam_resolution(endpoint=endpoint))
         self.num_channels = num_channels(endpoint=endpoint)
         self.linear = nn.Linear(self.num_channels, 2)
+        # Softmax for outputting the CAM
+        self.softmax = nn.Softmax(dim=-1)
         # Loss function
         class_weights = torch.FloatTensor([1.0, pos_class_weight])
         self.loss_criterion = nn.CrossEntropyLoss(weight=class_weights)
@@ -57,8 +59,9 @@ class EfficientNetSegmentation(nn.Module):
         if return_cam:
             # Channel dimension needs to be at the end for nn.Linear to work
             hidden_state = torch.movedim(hidden_state, 1, -1)
-            class_activation_map = self.linear(hidden_state)
-            return class_activation_map
+            cam = self.linear(hidden_state)
+            cam = self.softmax(cam)[..., 1]
+            return cam
         else:
             avgpool = torch.squeeze(self.avgpool(hidden_state))
             class_scores = self.linear(avgpool)
