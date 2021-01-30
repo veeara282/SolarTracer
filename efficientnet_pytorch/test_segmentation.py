@@ -49,7 +49,7 @@ class SegmentationTestSet(Dataset):
             for pos_dir in pos_dirs:
                 valid_imgs = [entry.path for entry in os.scandir(pos_dir) if re.search(r'(\d+)\.\w+', entry.path)]
                 for img in valid_imgs:
-                    stem = re.search(r'\d+', img).group()
+                    stem, _ = os.path.splitext(img)
                     self.samples.append((img, f"{stem}_true_seg.png"))
         self.transform = transform
         self.target_transform = target_transform
