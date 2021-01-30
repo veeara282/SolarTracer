@@ -4,6 +4,7 @@ from torch.utils.data.dataloader import DataLoader
 from torchvision.datasets import ImageFolder
 from torchvision import transforms
 from PIL import Image
+from tqdm.std import tqdm
 
 from .segmentation import EfficientNetSegmentation, to_device, transform, train_or_eval
 import argparse
@@ -24,9 +25,9 @@ def classification_test_set(root, **kwargs):
     # Add them all to a ConcatDataset
     return ConcatDataset(subsets)
 
-def threshold(image_mask: torch.FloatTensor) -> torch.LongTensor:
+def threshold(image_mask: torch.FloatTensor, threshold=0.6) -> torch.LongTensor:
     '''Converts a FloatTensor to a binary LongTensor using a threshold.'''
-    return (image_mask > 0.6).to(torch.long)
+    return (image_mask > threshold).to(torch.long)
 
 # The transformation applied to image segmentation masks.
 # Image masks are 8-bit grayscale PNG images (mode L), so transforms.Grayscale is a no-op.
@@ -65,7 +66,14 @@ class SegmentationTestSet(Dataset):
         return len(self.samples)
 
 def eval_segmentation(model: torch.nn.Module, data_loader: DataLoader):
-    pass
+    model.eval()
+    for batch in tqdm(data_loader, desc="Test segmentation"):
+        # These are tensors of input images and segmentation masks respectively
+        inputs, masks = batch[0], batch[1]
+        output_cam = model(to_device(inputs), return_cam=True)
+        print(output_cam.size())
+        # output = threshold(output_cam)
+        
 
 
 def parse_args():
