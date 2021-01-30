@@ -25,9 +25,9 @@ def classification_test_set(root, **kwargs):
     # Add them all to a ConcatDataset
     return ConcatDataset(subsets)
 
-def threshold(image_mask: torch.FloatTensor, threshold=0.6) -> torch.LongTensor:
+def threshold(image_mask: torch.FloatTensor, threshold=0.6) -> torch.ByteTensor:
     '''Converts a FloatTensor to a binary LongTensor using a threshold.'''
-    return (image_mask > threshold).to(torch.long)
+    return (image_mask > threshold).to(torch.uint8)
 
 # The transformation applied to image segmentation masks.
 # Image masks are 8-bit grayscale PNG images (mode L), so transforms.Grayscale is a no-op.
@@ -70,10 +70,13 @@ def eval_segmentation(model: torch.nn.Module, data_loader: DataLoader):
     for batch in tqdm(data_loader, desc="Test segmentation"):
         # These are tensors of input images and segmentation masks respectively
         inputs, masks = batch[0], batch[1]
-        output_cam = model(to_device(inputs), return_cam=True)
-        print(output_cam.size())
-        # output = threshold(output_cam)
-        
+        output_cams = model(to_device(inputs), return_cam=True)
+        # Compare model output and true segmentation mask on GPU
+        outputs = threshold(output_cams)
+        masks = to_device(masks)
+        print("Model output:", outputs.size(), outputs.dtype)
+        print("True seg:", masks.size(), masks.dtype)
+        # Compute Jaccard similarity for each example
 
 
 def parse_args():
