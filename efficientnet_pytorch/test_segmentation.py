@@ -75,7 +75,7 @@ def main():
     # Set up test set
     test_set_class = classification_test_set(root='./SPI_eval/', transform=transform)
     test_loader_class = DataLoader(test_set_class, batch_size=args.batch_size, shuffle=True, num_workers=4)
-    test_set_seg = ImageFolder(SegmentationTestSet(root='./SPI_eval/'))
+    test_set_seg = SegmentationTestSet(root='./SPI_eval/')
     test_loader_seg = DataLoader(test_set_seg, batch_size=args.batch_size, shuffle=True, num_workers=4)
 
     # Evaluate
