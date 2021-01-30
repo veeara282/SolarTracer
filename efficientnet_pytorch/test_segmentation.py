@@ -1,4 +1,5 @@
 import torch
+from torch._C import dtype
 from torch.utils.data import Dataset, ConcatDataset
 from torch.utils.data.dataloader import DataLoader
 from torchvision.datasets import ImageFolder
@@ -67,6 +68,8 @@ class SegmentationTestSet(Dataset):
 
 def eval_segmentation(model: torch.nn.Module, data_loader: DataLoader):
     model.eval()
+    total_jaccard = 0.0
+    example_count = 0
     for batch in tqdm(data_loader, desc="Test segmentation"):
         # These are tensors of input images and segmentation masks respectively
         inputs, masks = batch[0], torch.squeeze(batch[1], 1)
@@ -74,9 +77,17 @@ def eval_segmentation(model: torch.nn.Module, data_loader: DataLoader):
         # Compare model output and true segmentation mask on GPU
         outputs = threshold(output_cams)
         masks = to_device(masks)
-        print("Model output:", outputs.size(), outputs.dtype)
-        print("True seg:", masks.size(), masks.dtype)
         # Compute Jaccard similarity for each example
+        intersection = torch.logical_and(outputs, masks, dtype=torch.uint8)
+        union = torch.logical_or(outputs, masks, dtype=torch.uint8)
+        count_intersection = torch.sum(intersection, dim=(1, 2))
+        count_union = torch.sum(union, dim=(1, 2))
+        total_jaccard += torch.sum(count_intersection / count_union).cpu().item()
+        example_count += inputs.shape[0]
+    avg_jaccard = total_jaccard / example_count
+    print('Segmentation results:')
+    print(f'Average Jaccard similarity: {avg_jaccard:.2%}')
+    print(f'Number of examples: {example_count}')
 
 
 def parse_args():
