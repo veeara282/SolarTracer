@@ -47,7 +47,7 @@ class SegmentationTestSet(Dataset):
             #iterate through only positive folders (/1)
             pos_dirs = [entry.path for entry in os.scandir(subdir) if entry.is_dir() and entry.name == '1']
             for pos_dir in pos_dirs:
-                valid_imgs = [img for img in os.listdir(pos_dir) if re.search(r'(\d+)\.\w+', img)]
+                valid_imgs = [entry.path for entry in os.scandir(pos_dir) if re.search(r'(\d+)\.\w+', entry.path)]
                 for img in valid_imgs:
                     stem = re.search(r'\d+', img).group()
                     self.samples.append((img, f"{stem}_true_seg.png"))
@@ -87,6 +87,9 @@ def main():
 
     # Check length of segmentation test set
     print(len(test_set_seg))
+
+    batch = next(iter(test_loader_seg))
+    print(type(batch))
 
     # Evaluate
     # train_or_eval(model, test_loader_seg)
