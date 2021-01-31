@@ -67,7 +67,7 @@ class SegmentationTestSet(Dataset):
         return len(self.samples)
 
 def sum_2d(mask):
-    return torch.sum(mask, dim=(1, 2))
+    return torch.sum(mask, dim=(1, 2), dtype=torch.int32)
 
 def divide_and_sum(quantity1, quantity2):
     return torch.sum(quantity1 / quantity2).cpu().item()
