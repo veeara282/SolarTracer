@@ -1,0 +1,21 @@
+#/bin/bash
+
+INSTANCE_ID="i-000b729b4e08f3d92"
+STATUS_QUERY="Reservations[*].Instances[*].{InstanceId:InstanceId,State:State,Tags:Tags[*]}"
+
+if [ -z "$1" ] || [ "$1" = help ] || [ "$1" = info ]; then
+    cat << END
+Manage the solar EC2 instance.
+Usage: $0 [status|start|stop|restart|help|info]
+END
+elif [ "$1" = status ]; then
+    aws ec2 describe-instances --instance-ids $INSTANCE_ID --query $STATUS_QUERY
+elif [ "$1" = start ]; then
+    aws ec2 start-instances --instance-ids $INSTANCE_ID
+elif [ "$1" = stop ]; then
+    aws ec2 stop-instances --instance-ids $INSTANCE_ID
+elif [ "$1" = restart ]; then
+    aws ec2 reboot-instances --instance-ids $INSTANCE_ID
+else
+    echo "Error: expected one of [start, stop, reboot]; got $1"
+fi
