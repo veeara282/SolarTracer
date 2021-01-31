@@ -36,7 +36,7 @@ class EfficientNetSegmentation(nn.Module):
         else:
             raise ValueError('endpoint must be an integer between 1 and 5, inclusive')
         # Create some number of Conv2d's followed by an AvgPool2d and Linear
-        self.conv2ds = []
+        self.conv2ds = nn.ModuleList()
         # TODO Extract channel count from .utils module
         # Also, could use depthwise separable convolution instead (see MobileNet paper) --
         # it's what EfficientNet uses
