@@ -70,7 +70,7 @@ def sum_2d(mask):
     return torch.sum(mask, dim=(1, 2))
 
 def divide_and_sum(quantity1, quantity2):
-    torch.sum(quantity1 / quantity2).cpu().item()
+    return torch.sum(quantity1 / quantity2).cpu().item()
 
 def eval_segmentation(model: torch.nn.Module, data_loader: DataLoader):
     model.eval()
