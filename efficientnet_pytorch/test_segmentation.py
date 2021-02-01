@@ -109,7 +109,7 @@ def eval_segmentation(model: torch.nn.Module, data_loader: DataLoader):
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Evaluate the model on the test set')
-    parser.add_argument('model', metavar='model.pth', default='model.pth')
+    parser.add_argument('model', metavar='model.pt', default='model.pt')
     parser.add_argument('-b', '--batch-size', type=int, default=48)
     return parser.parse_args()
 
