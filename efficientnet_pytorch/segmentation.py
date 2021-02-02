@@ -197,15 +197,17 @@ def parse_args():
     parser.add_argument('-o', '--out', metavar='model.pt', default='model.pt')
     parser.add_argument('-w', '--pos-class-weight', type=float, default=8.0)
     parser.add_argument('-b', '--batch-size', type=int, default=48)
+    parser.add_argument('--train-dir', default='./SPI_train/')
+    parser.add_argument('--val-dir', default='./SPI_val/')
     return parser.parse_args()
 
 def main():
     args = parse_args()
 
-    train_set = ImageFolder(root='./SPI_train/', transform=transform)
+    train_set = ImageFolder(root=args.train_dir, transform=transform)
     train_loader = DataLoader(train_set, batch_size=args.batch_size, shuffle=True, num_workers=4)
     
-    val_set = ImageFolder(root='./SPI_val/', transform=transform)
+    val_set = ImageFolder(root=args.val_dir, transform=transform)
     val_loader = DataLoader(val_set, batch_size=args.batch_size, shuffle=True, num_workers=4)
 
     model = to_device(EfficientNetSegmentation(pos_class_weight=args.pos_class_weight))
