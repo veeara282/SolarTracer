@@ -5,6 +5,7 @@ from torch.utils.data.dataloader import DataLoader
 from tqdm import tqdm, trange
 from torchvision.datasets import ImageFolder
 from torchvision import transforms
+from torch.cuda.amp import autocast, GradScaler
 
 from .model import EfficientNet
 import argparse
@@ -130,8 +131,8 @@ class EfficientNetSegmentation(nn.Module):
 def train_or_eval(model: nn.Module,
                   data_loader: DataLoader,
                   optimizer: optim.Optimizer = None,
-                  train: bool = False):
-    if train:
+                  scaler: GradScaler = None):
+    if optimizer:
         model.train()
     else:
         model.eval()
@@ -139,29 +140,39 @@ def train_or_eval(model: nn.Module,
     total_loss = 0
     correct = 0
     true_pos, all_true, all_pos = 0, 0, 0
-    for batch in tqdm(data_loader, desc=("Training Batches" if train else "Validation Batches")):
+    for batch in tqdm(data_loader, desc=("Training Batches" if optimizer else "Validation Batches")):
         inputs, labels = batch[0], batch[1]
-        output = model(to_device(inputs))
+        # Reset the optimizer first
+        if optimizer:
+            optimizer.zero_grad()
+        # Do both autocast steps together
+        with autocast(scaler is not None):
+            output = model(to_device(inputs))
+            loss = model.loss_criterion(output, to_device(labels))
+        # Accumulate metrics
+        total_loss += loss.float().item()
         total += output.size()[0]
         predicted = torch.argmax(output, 1).cpu()
         correct += (labels == predicted).numpy().sum()
         true_pos += (labels & predicted).numpy().sum()
         all_true += labels.numpy().sum()
         all_pos += predicted.numpy().sum()
-        if train:
-            optimizer.zero_grad() 
-            loss = model.loss_criterion(output, to_device(labels))
-            total_loss += loss.item()
-            loss.backward()
-            optimizer.step()
-        else:
-            total_loss += model.loss_criterion(output, to_device(labels)).item()
+        # Training step
+        if optimizer:
+            if scaler:
+                scaler.scale(loss).backward()
+                scaler.step(optimizer)
+                scaler.update()
+            else:
+                loss.backward()
+                optimizer.step()
+    # Compute metrics
     total_loss /= total
     precision = true_pos / all_pos
     recall = true_pos / all_true
     f1 = 2 * precision * recall / (precision + recall)
     # Print accuracy
-    print('Training Results:' if train else 'Validation Results:')
+    print('Training Results:' if optimizer else 'Validation Results:')
     print(f'Loss: {total_loss:.4f}')
     print(f'Correct: {correct} ({correct / total:.2%})')
     print(f'Precision: {true_pos} / {all_pos} ({precision:.2%})')
@@ -173,7 +184,8 @@ def train_or_eval(model: nn.Module,
 def train_segmentation(model: EfficientNetSegmentation,
                        train_loader: DataLoader,
                        val_loader: DataLoader,
-                       optimizer: optim.Optimizer):
+                       optimizer: optim.Optimizer,
+                       scaler: GradScaler = None):
     # Don't train the backbone
     model.freeze_backbone()
     # Number of layers to add and number of epochs per layer
@@ -183,8 +195,8 @@ def train_segmentation(model: EfficientNetSegmentation,
     for layer_num in trange(num_layers_branch, desc='Build segmentation branch'):
         model.add_conv2d_layer()
         for epoch in trange(num_epochs, desc=f'Train branch layer {layer_num}'):
-            train_or_eval(model, train_loader, optimizer, train=True)
-            train_or_eval(model, val_loader, optimizer)
+            train_or_eval(model, train_loader, optimizer, scaler)
+            train_or_eval(model, val_loader, scaler=scaler)
         model.freeze_conv2d_layers()
 
 transform = transforms.Compose([
@@ -199,6 +211,7 @@ def parse_args():
     parser.add_argument('-l', '--num-layers-branch', type=int, default=3)
     parser.add_argument('-e', '--num-epochs', type=int, default=3)
     parser.add_argument('-b', '--batch-size', type=int, default=48)
+    parser.add_argument('-m', '--mixed-precision', action='store_true')
     parser.add_argument('--train-dir', default='./SPI_train/')
     parser.add_argument('--val-dir', default='./SPI_val/')
     return parser.parse_args()
@@ -215,7 +228,8 @@ def main():
     model = to_device(EfficientNetSegmentation(pos_class_weight=args.pos_class_weight))
     optimizer = optim.RMSprop(model.parameters())
     
-    train_segmentation(model, train_loader, val_loader, optimizer)
+    scaler = GradScaler() if args.mixed_precision else None
+    train_segmentation(model, train_loader, val_loader, optimizer, scaler)
 
     model.to_save_file(args.out)
 
