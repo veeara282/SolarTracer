@@ -118,14 +118,14 @@ class EfficientNetSegmentation(nn.Module):
         '''Creates a new model from an existing save file.
         The save file contains both the state_dict and constructor parameters needed to
         initialize the model correctly.'''
-        save_json = torch.load(save_file, map_location=get_device())
+        save_json = torch.load(save_file)
         # Extract constructor params and state_dict
         params = save_json['constructor_params']
         state_dict = save_json['state_dict']
         # Create model according to params and load state_dict
         model = cls(from_pretrained=False, **params)
         model.load_state_dict(state_dict)
-        return model
+        return to_device(model)
 
 def train_or_eval(model: nn.Module,
                   data_loader: DataLoader,
