@@ -177,8 +177,8 @@ def train_segmentation(model: EfficientNetSegmentation,
     # Don't train the backbone
     model.freeze_backbone()
     # Number of layers to add and number of epochs per layer
-    num_layers_branch = 3
-    num_epochs = 3
+    num_layers_branch = parse_args().num_layers_branch
+    num_epochs = parse_args().num_epochs
     # Train the segmentation branch. At first, this branch has no conv2d layers and a linear layer.
     for layer_num in trange(num_layers_branch, desc='Build segmentation branch'):
         model.add_conv2d_layer()
@@ -196,6 +196,8 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Train and store the model')
     parser.add_argument('-o', '--out', metavar='model.pt', default='model.pt')
     parser.add_argument('-w', '--pos-class-weight', type=float, default=8.0)
+    parser.add_argument('-l', '--num-layers-branch', type=int, default=3)
+    parser.add_argument('-e', '--num-epochs', type=int, default=3)
     parser.add_argument('-b', '--batch-size', type=int, default=48)
     parser.add_argument('--train-dir', default='./SPI_train/')
     parser.add_argument('--val-dir', default='./SPI_val/')
