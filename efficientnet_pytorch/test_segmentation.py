@@ -117,8 +117,7 @@ def main():
     args = parse_args()
 
     # Read model file
-    model = to_device(EfficientNetSegmentation())
-    model.load_state_dict(torch.load(args.model))
+    model = EfficientNetSegmentation.from_save_file(args.model)
     model.eval()
 
     # Set up test set

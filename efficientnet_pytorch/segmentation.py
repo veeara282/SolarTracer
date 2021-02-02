@@ -9,27 +9,40 @@ from torchvision import transforms
 from .model import EfficientNet
 import argparse
 
+def get_device():
+    return "cuda:0" if torch.cuda.is_available() else "cpu"
+
 def to_device(obj):
-    device = "cuda:0" if torch.cuda.is_available() else "cpu"
-    return obj.to(device)
-
-def cam_resolution(backbone='efficientnet-b0', endpoint=1):
-    if endpoint in range(1, 6):
-        return 224 // (2 ** endpoint)
-    else:
-        raise ValueError('endpoint must be an integer between 1 and 5, inclusive')
-
-def num_channels(backbone='efficientnet-b0', endpoint=1):
-    if endpoint in range(1, 6):
-        return [16, 24, 40, 112, 1280][endpoint - 1]
-    else:
-        raise ValueError('endpoint must be an integer between 1 and 5, inclusive')
+    return obj.to(get_device())
 
 class EfficientNetSegmentation(nn.Module):
-    def __init__(self, backbone='efficientnet-b0', endpoint=1, pos_class_weight=2.0):
+    @staticmethod
+    def cam_resolution(backbone='efficientnet-b0', endpoint=1):
+        if endpoint in range(1, 6):
+            return 224 // (2 ** endpoint)
+        else:
+            raise ValueError('endpoint must be an integer between 1 and 5, inclusive')
+
+    @staticmethod
+    def num_channels(backbone='efficientnet-b0', endpoint=1):
+        if endpoint in range(1, 6):
+            return [16, 24, 40, 112, 1280][endpoint - 1]
+        else:
+            raise ValueError('endpoint must be an integer between 1 and 5, inclusive')
+
+    def __init__(self, from_pretrained=True, **kwargs):
         super().__init__()
+        # Extract arguments and save the params
+        self.constructor_params = kwargs
+        backbone = kwargs.get('backbone', 'efficientnet-b0')
+        endpoint = kwargs.get('endpoint', 1)
+        pos_class_weight = kwargs.get('pos_class_weight', 2.0)
+        num_layers = kwargs.get('num_layers', 0)
         # Use EfficientNet classifier as a backbone
-        self.backbone = EfficientNet.from_pretrained(backbone, num_classes=2)
+        if from_pretrained:
+            self.backbone = EfficientNet.from_pretrained(backbone, num_classes=2)
+        else:
+            self.backbone = EfficientNet.from_name(backbone, num_classes=2)
         # Use endpoint from reduction level i in [1, 2, 3, 4, 5]
         if endpoint in range(1, 6):
             self.endpoint = f'reduction_{endpoint}'
@@ -40,9 +53,13 @@ class EfficientNetSegmentation(nn.Module):
         # TODO Extract channel count from .utils module
         # Also, could use depthwise separable convolution instead (see MobileNet paper) --
         # it's what EfficientNet uses
-        self.avgpool = nn.AvgPool2d(cam_resolution(endpoint=endpoint))
-        self.num_channels = num_channels(endpoint=endpoint)
+        self.avgpool = nn.AvgPool2d(self.cam_resolution(endpoint=endpoint))
+        self.num_channels = self.num_channels(endpoint=endpoint)
         self.linear = nn.Linear(self.num_channels, 2)
+        # If num_layers is provided, create the desired number of layers (this is needed to
+        # load the state_dict properly)
+        for _ in range(num_layers):
+            self.add_conv2d_layer(reset_params=False)
         # Softmax for outputting the CAM
         self.softmax = nn.Softmax(dim=-1)
         # Loss function
@@ -79,10 +96,36 @@ class EfficientNetSegmentation(nn.Module):
         for conv2d in self.conv2ds:
             conv2d.requires_grad_(False)
 
-    def add_conv2d_layer(self):
+    def add_conv2d_layer(self, reset_params=True):
         '''Adds a new Conv2d layer and resets the Linear layer.'''
         self.conv2ds.append(self.new_conv2d_layer())
-        self.linear.reset_parameters()
+        if reset_params:
+            self.linear.reset_parameters()
+    
+    def to_save_file(self, save_file):
+        '''Saves this model to a save file in .pt format.
+        Both the constructor parameters and the state_dict are saved.'''
+        # Update num_layers as it is not updated when the number of layers changes
+        self.constructor_params['num_layers'] = len(self.conv2ds)
+        save_json = {
+            'constructor_params': self.constructor_params,
+            'state_dict': self.state_dict()
+        }
+        torch.save(save_json, save_file)
+    
+    @classmethod
+    def from_save_file(cls, save_file):
+        '''Creates a new model from an existing save file.
+        The save file contains both the state_dict and constructor parameters needed to
+        initialize the model correctly.'''
+        save_json = torch.load(save_file, map_location=get_device())
+        # Extract constructor params and state_dict
+        params = save_json['constructor_params']
+        state_dict = save_json['state_dict']
+        # Create model according to params and load state_dict
+        model = cls(from_pretrained=False, **params)
+        model.load_state_dict(state_dict)
+        return model
 
 def train_or_eval(model: nn.Module,
                   data_loader: DataLoader,
@@ -170,7 +213,7 @@ def main():
     
     train_segmentation(model, train_loader, val_loader, optimizer)
 
-    torch.save(model.state_dict(), args.out)
+    model.to_save_file(args.out)
 
 if __name__ == '__main__':
     main()
