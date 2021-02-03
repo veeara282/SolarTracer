@@ -196,8 +196,9 @@ def train_segmentation(model: EfficientNetSegmentation,
         model.add_conv2d_layer()
         for epoch in trange(num_epochs, desc=f'Train branch layer {layer_num}'):
             train_or_eval(model, train_loader, optimizer, scaler)
-            train_or_eval(model, val_loader, scaler=scaler)
         model.freeze_conv2d_layers()
+    # Evaluate on validation set once at the end
+    train_or_eval(model, val_loader, scaler=scaler)
 
 transform = transforms.Compose([
     transforms.Resize((224, 224)),
