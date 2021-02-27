@@ -1,4 +1,6 @@
 # TODO Implement CAM-GLWT for EfficientNet
+import random
+import numpy as np
 import torch
 from torch import nn, optim
 from torch.utils.data.dataloader import DataLoader
@@ -7,8 +9,15 @@ from torchvision.datasets import ImageFolder
 from torchvision import transforms
 from torch.cuda.amp import autocast, GradScaler
 
-from .model import EfficientNet
+from efficientnet_pytorch.model import EfficientNet
 import argparse
+
+def make_deterministic(seed=1337):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.set_deterministic(True)
+    torch.backends.cudnn.benchmark = False
 
 def get_device():
     return "cuda:0" if torch.cuda.is_available() else "cpu"
