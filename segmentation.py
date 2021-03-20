@@ -236,7 +236,9 @@ def main():
     val_loader = DataLoader(val_set, batch_size=args.batch_size, shuffle=True, num_workers=4)
 
     model = to_device(EfficientNetSegmentation(pos_class_weight=args.pos_class_weight))
-    optimizer = optim.RMSprop(model.parameters())
+    # Use RMSProp parameters from the DeepSolar paper (alpha = second moment discount rate)
+    # except for learning rate decay
+    optimizer = optim.RMSprop(model.parameters(), alpha=0.9, momentum=0.9, epsilon=0.1, lr=1e-3)
     
     scaler = GradScaler() if args.mixed_precision else None
     train_segmentation(model, train_loader, val_loader, optimizer, scaler)
