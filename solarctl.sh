@@ -1,6 +1,6 @@
 #/bin/bash
 
-INSTANCE_ID="i-000b729b4e08f3d92"
+INSTANCE_ID="i-04762a497fb52de9f"
 STATUS_QUERY="Reservations[*].Instances[*].{InstanceId:InstanceId,State:State,Tags:Tags[*]}"
 OPTIONS="[status|start|stop|restart|reboot|help|info]"
 
