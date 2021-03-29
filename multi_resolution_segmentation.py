@@ -43,8 +43,8 @@ class MultiResolutionSegmentation(nn.Module):
         self.upsampler = nn.Upsample(size=112, mode='nearest')
         # Average pooling if not outputting CAM
         self.avgpool = nn.AvgPool2d(112)
-        # Softmax if outputting CAM
-        self.softmax = nn.Softmax(dim=-1)
+        # Softmax over channels if outputting CAM
+        self.softmax = nn.Softmax(dim=1)
         # Loss function
         class_weights = torch.FloatTensor([1.0, pos_class_weight])
         self.loss_criterion = nn.CrossEntropyLoss(weight=class_weights)
@@ -68,8 +68,11 @@ class MultiResolutionSegmentation(nn.Module):
         stacked_cams = torch.stack(sub_cams, dim=0)
         cam = torch.sum(stacked_cams, dim=0, keepdim=False)
         # Return either scores or activation map
+        # Each Conv2D layer returns an output of dimension (N, C, H, W)
         if return_cam:
-            return self.softmax(cam)[..., 1]
+            # Compute softmax channel-wise and output only the positive class
+            # probability for each pixel
+            return self.softmax(cam)[:, 1]
         else:
             avgpool = torch.squeeze(self.avgpool(cam))
             return avgpool
