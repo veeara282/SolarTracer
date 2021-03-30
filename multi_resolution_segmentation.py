@@ -6,7 +6,7 @@ from torchvision.datasets import ImageFolder
 from torchvision import transforms
 from torch.cuda.amp import autocast, GradScaler
 from efficientnet_pytorch.model import EfficientNet
-from .segmentation import to_device, train_or_eval
+from segmentation import to_device, train_or_eval
 
 import argparse
 
