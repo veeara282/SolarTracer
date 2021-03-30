@@ -6,6 +6,7 @@ from torchvision.datasets import ImageFolder
 from torchvision import transforms
 from torch.cuda.amp import autocast, GradScaler
 from efficientnet_pytorch.model import EfficientNet
+from .segmentation import to_device, train_or_eval
 
 import argparse
 
@@ -77,3 +78,83 @@ class MultiResolutionSegmentation(nn.Module):
             avgpool = torch.squeeze(self.avgpool(cam))
             return avgpool
 
+    def freeze_backbone(self):
+        '''Freezes the backbone.'''
+        self.backbone.requires_grad_(False)
+
+    def to_save_file(self, save_file):
+        '''Saves this model to a save file in .pt format.
+        Both the constructor parameters and the state_dict are saved.'''
+        save_json = {
+            'constructor_params': self.constructor_params,
+            'state_dict': self.state_dict()
+        }
+        torch.save(save_json, save_file)
+    
+    @classmethod
+    def from_save_file(cls, save_file):
+        '''Creates a new model from an existing save file.
+        The save file contains both the state_dict and constructor parameters needed to
+        initialize the model correctly.'''
+        save_json = torch.load(save_file)
+        # Extract constructor params and state_dict
+        params = save_json['constructor_params']
+        state_dict = save_json['state_dict']
+        # Create model according to params and load state_dict
+        model = cls(from_pretrained=False, **params)
+        model.load_state_dict(state_dict)
+        return to_device(model)
+
+
+def train_multi_segmentation(model: MultiResolutionSegmentation,
+                             train_loader: DataLoader,
+                             val_loader: DataLoader,
+                             optimizer: optim.Optimizer,
+                             scaler: GradScaler = None):
+    # Don't train the backbone
+    model.freeze_backbone()
+    num_epochs = parse_args().num_epochs
+    # Train the segmentation branch. At first, this branch has no conv2d layers and a linear layer.
+    for epoch in trange(num_epochs, desc=f'Training'):
+        train_or_eval(model, train_loader, optimizer, scaler)
+    # Evaluate on validation set once at the end
+    train_or_eval(model, val_loader, scaler=scaler)
+
+transform = transforms.Compose([
+    transforms.Resize((224, 224)),
+    transforms.ToTensor()
+])
+
+def parse_args():
+    parser = argparse.ArgumentParser(description='Train and store the model')
+    parser.add_argument('-o', '--out', metavar='model.pt', default='model.pt')
+    parser.add_argument('-w', '--pos-class-weight', type=float, default=8.0)
+    parser.add_argument('-e', '--num-epochs', type=int, default=3)
+    parser.add_argument('-b', '--batch-size', type=int, default=48)
+    parser.add_argument('-m', '--mixed-precision', action='store_true')
+    parser.add_argument('--train-dir', default='./SPI_train/')
+    parser.add_argument('--val-dir', default='./SPI_val/')
+    return parser.parse_args()
+
+def main():
+    args = parse_args()
+
+    train_set = ImageFolder(root=args.train_dir, transform=transform)
+    train_loader = DataLoader(train_set, batch_size=args.batch_size, shuffle=True, num_workers=4)
+    
+    val_set = ImageFolder(root=args.val_dir, transform=transform)
+    val_loader = DataLoader(val_set, batch_size=args.batch_size, shuffle=True, num_workers=4)
+
+    model = to_device(MultiResolutionSegmentation(pos_class_weight=args.pos_class_weight))
+    # Use RMSProp parameters from the DeepSolar paper (alpha = second moment discount rate)
+    # except for learning rate decay and epsilon
+    optimizer = optim.RMSprop(model.parameters(), alpha=0.9, momentum=0.9, eps=0.001, lr=1e-3)
+    # optimizer = optim.Adam(model.parameters()) # betas =(0.9, 0.9)
+    
+    scaler = GradScaler() if args.mixed_precision else None
+    train_multi_segmentation(model, train_loader, val_loader, optimizer, scaler)
+
+    model.to_save_file(args.out)
+
+if __name__ == '__main__':
+    main()
