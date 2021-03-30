@@ -35,7 +35,7 @@ class MultiResolutionSegmentation(nn.Module):
         self.seg_branches = nn.ModuleDict()
         # Reduction level 3
         seg_branch_3 = nn.Sequential(
-            nn.Conv2d(40, 16, padding=1),
+            nn.Conv2d(40, 16, kernel_size=3, padding=1),
             nn.ReLU(),
             nn.Conv2d(16, 2, kernel_size=1)
         )
