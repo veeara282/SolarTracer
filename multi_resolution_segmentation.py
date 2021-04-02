@@ -10,6 +10,28 @@ from segmentation import to_device, train_or_eval
 
 import argparse
 
+class ClassActivationMap2d(nn.Module):
+    '''Generates a class activation map from the input tensor (format: N * C * H * W).'''
+
+    def __init__(self, in_channels: int, out_channels: int, input_res, output_res=None):
+        super(ClassActivationMap2d, self).__init__()
+        # Linear (1x1 convolution) layer to transform input feature maps into CAMs
+        self.linear = nn.Conv2d(in_channels, out_channels, kernel_size=1)
+        # Average pooling if not generating CAM
+        self.avgpool = nn.AvgPool2d(input_res)
+        # Upsample to a certain size (optional)
+        self.upsample = nn.Upsample(size=output_res) if output_res else None
+    
+    def forward(self, inputs, return_cam=False):
+        if return_cam:
+            # If generating CAM, apply the linear transformation then upsample
+            out = self.linear(inputs)
+            return self.upsample(out) if self.upsample else out
+        else:
+            # If not generating CAM, average pool the input to size 1x1, then apply the linear transformation
+            avg = self.avgpool(inputs)
+            return self.linear(avg)
+
 class MultiResolutionSegmentation(nn.Module):
     '''Generates a class activation map by combining multiple CAMs at different resolutions.'''
     # TODO Implement
@@ -37,13 +59,13 @@ class MultiResolutionSegmentation(nn.Module):
         seg_branch_3 = nn.Sequential(
             nn.Conv2d(40, 16, kernel_size=3, padding=1),
             nn.ReLU(),
-            nn.Conv2d(16, 2, kernel_size=1)
         )
         self.seg_branches['reduction_3'] = seg_branch_3
-        # Upsample all CAMs to 112x112
-        self.upsampler = nn.Upsample(size=112, mode='nearest')
-        # Average pooling if not outputting CAM
-        self.avgpool = nn.AvgPool2d(112)
+        
+        # Create a CAM layer for each endpoint
+        self.activation_map = nn.ModuleDict()
+        self.activation_map['reduction_3'] = ClassActivationMap2d(16, 2, 28, 112)
+
         # Softmax over channels if outputting CAM
         self.softmax = nn.Softmax(dim=1)
         # Loss function
@@ -63,7 +85,7 @@ class MultiResolutionSegmentation(nn.Module):
                 seg_branch = self.seg_branches[endpoint_name]
                 hidden_state = hidden_states[endpoint_name]
                 sub_cam = seg_branch(hidden_state)
-                sub_cam = self.upsampler(sub_cam)
+                sub_cam = self.activation_map[endpoint_name](sub_cam, return_cam=return_cam)
                 sub_cams.append(sub_cam)
         # Sum all CAMs together
         stacked_cams = torch.stack(sub_cams, dim=0)
@@ -75,8 +97,8 @@ class MultiResolutionSegmentation(nn.Module):
             # probability for each pixel
             return self.softmax(cam)[:, 1]
         else:
-            avgpool = torch.squeeze(self.avgpool(cam))
-            return avgpool
+            # Remove the (H, W) dimensions
+            return torch.squeeze(cam)
 
     def freeze_backbone(self):
         '''Freezes the backbone.'''
