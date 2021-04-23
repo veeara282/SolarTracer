@@ -6,7 +6,7 @@ from torchvision.datasets import ImageFolder
 from torchvision import transforms
 from torch.cuda.amp import autocast, GradScaler
 from efficientnet_pytorch.model import EfficientNet
-from segmentation import to_device, train_or_eval
+from segmentation import to_device, train_or_eval, num_channels, cam_resolution
 
 import argparse
 
@@ -45,7 +45,7 @@ class MultiResolutionSegmentation(nn.Module):
         # # Extract arguments and save the params
         self.constructor_params = kwargs
         backbone = kwargs.get('backbone', 'efficientnet-b0')
-        # endpoints = kwargs.get('endpoint', [1, 2, 3, 4])
+        endpoints = kwargs.get('endpoints', [1, 2, 3, 4])
         pos_class_weight = kwargs.get('pos_class_weight', 2.0)
         # Use EfficientNet classifier as a backbone
         if from_pretrained:
@@ -53,18 +53,20 @@ class MultiResolutionSegmentation(nn.Module):
         else:
             self.backbone = EfficientNet.from_name(backbone, num_classes=2)
         
-        # Create a segmentation branch for each endpoint
+        # Create a segmentation branch and CAM layer for each endpoint
         self.seg_branches = nn.ModuleDict()
-        # Reduction level 3
-        seg_branch_3 = nn.Sequential(
-            nn.Conv2d(40, 16, kernel_size=3, padding=1),
-            nn.ReLU(),
-        )
-        self.seg_branches['reduction_3'] = seg_branch_3
-        
-        # Create a CAM layer for each endpoint
         self.activation_map = nn.ModuleDict()
-        self.activation_map['reduction_3'] = ClassActivationMap2d(16, 2, 28, 112)
+        for endpoint in endpoints:
+            # Create seg branch for endpoint
+            in_channels = num_channels(endpoint=endpoint)
+            seg_branch = nn.Sequential(
+                nn.Conv2d(in_channels, 16, kernel_size=3, padding=1),
+                nn.ReLU()
+            )
+            self.seg_branches[f'reduction_{endpoint}'] = seg_branch
+            # Create CAM layer for endpoint
+            in_res = cam_resolution(endpoint=endpoint)
+            self.activation_map[f'reduction_{endpoint}'] = ClassActivationMap2d(16, 2, in_res, 112)
 
         # Softmax over channels if outputting CAM
         self.softmax = nn.Softmax(dim=1)

@@ -25,21 +25,19 @@ def get_device():
 def to_device(obj):
     return obj.to(get_device())
 
+def cam_resolution(backbone='efficientnet-b0', endpoint=1):
+    if endpoint in range(1, 6):
+        return 224 // (2 ** endpoint)
+    else:
+        raise ValueError('endpoint must be an integer between 1 and 5, inclusive')
+
+def num_channels(backbone='efficientnet-b0', endpoint=1):
+    if endpoint in range(1, 6):
+        return [16, 24, 40, 112, 1280][endpoint - 1]
+    else:
+        raise ValueError('endpoint must be an integer between 1 and 5, inclusive')
+
 class EfficientNetSegmentation(nn.Module):
-    @staticmethod
-    def cam_resolution(backbone='efficientnet-b0', endpoint=1):
-        if endpoint in range(1, 6):
-            return 224 // (2 ** endpoint)
-        else:
-            raise ValueError('endpoint must be an integer between 1 and 5, inclusive')
-
-    @staticmethod
-    def num_channels(backbone='efficientnet-b0', endpoint=1):
-        if endpoint in range(1, 6):
-            return [16, 24, 40, 112, 1280][endpoint - 1]
-        else:
-            raise ValueError('endpoint must be an integer between 1 and 5, inclusive')
-
     def __init__(self, from_pretrained=True, **kwargs):
         super().__init__()
         # Extract arguments and save the params
@@ -63,8 +61,8 @@ class EfficientNetSegmentation(nn.Module):
         # TODO Extract channel count from .utils module
         # Also, could use depthwise separable convolution instead (see MobileNet paper) --
         # it's what EfficientNet uses
-        self.avgpool = nn.AvgPool2d(self.cam_resolution(endpoint=endpoint))
-        self.num_channels = self.num_channels(endpoint=endpoint)
+        self.avgpool = nn.AvgPool2d(cam_resolution(endpoint=endpoint))
+        self.num_channels = num_channels(endpoint=endpoint)
         self.linear = nn.Linear(self.num_channels, 2)
         # If num_layers is provided, create the desired number of layers (this is needed to
         # load the state_dict properly)
