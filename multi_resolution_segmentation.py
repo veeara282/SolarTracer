@@ -142,7 +142,7 @@ def train_multi_segmentation(model: MultiResolutionSegmentation,
     for epoch in trange(num_epochs, desc=f'Training'):
         train_or_eval(model, train_loader, optimizer, scaler)
     # Evaluate on validation set once at the end
-    train_or_eval(model, val_loader, scaler=scaler)
+    return train_or_eval(model, val_loader, scaler=scaler)
 
 transform = transforms.Compose([
     transforms.Resize((224, 224)),
