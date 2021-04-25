@@ -134,11 +134,11 @@ def train_multi_segmentation(model: MultiResolutionSegmentation,
                              train_loader: DataLoader,
                              val_loader: DataLoader,
                              optimizer: optim.Optimizer,
-                             scaler: GradScaler = None):
+                             scaler: GradScaler = None,
+                             num_epochs: int = 3):
     # Don't train the backbone
     model.freeze_backbone()
-    num_epochs = parse_args().num_epochs
-    # Train the segmentation branch. At first, this branch has no conv2d layers and a linear layer.
+    # Train the segmentation part of the neural network
     for epoch in trange(num_epochs, desc=f'Training'):
         train_or_eval(model, train_loader, optimizer, scaler)
     # Evaluate on validation set once at the end
@@ -176,7 +176,7 @@ def main():
     # optimizer = optim.Adam(model.parameters()) # betas =(0.9, 0.9)
     
     scaler = GradScaler() if args.mixed_precision else None
-    train_multi_segmentation(model, train_loader, val_loader, optimizer, scaler)
+    train_multi_segmentation(model, train_loader, val_loader, optimizer, scaler, num_epochs=args.num_epochs)
 
     model.to_save_file(args.out)
 
