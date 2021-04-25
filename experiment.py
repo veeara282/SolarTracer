@@ -56,7 +56,7 @@ def print_results(results):
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train and store the model')
-    parser.add_argument('-o', '--out', metavar='model.pt', default='model.pt')
+    parser.add_argument('-o', '--out', metavar='model.pt', default='random_search.pt')
     parser.add_argument('-n', '--num-trials', type=int, default=10)
     parser.add_argument('--seed', type=int, default=5670)
     parser.add_argument('-b', '--batch-size', type=int, default=48)
