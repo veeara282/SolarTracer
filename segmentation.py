@@ -186,6 +186,12 @@ def train_or_eval(model: nn.Module,
     print(f'Recall: {true_pos} / {all_true} ({recall:.2%})')
     print(f'F1: {f1:.2%}')
     print(f'Total: {total}\n')
+    return {
+        'loss': total_loss,
+        'precision': precision,
+        'recall': recall,
+        'f1': f1
+    }
 
 
 def train_segmentation(model: EfficientNetSegmentation,
