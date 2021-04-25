@@ -78,5 +78,8 @@ def main():
     top_k = heapq.nlargest(3, results, key=attrgetter('f1'))
     print_results(top_k)
 
+    best_model = top_k[0]['model']
+    best_model.to_save_file(args.out)
+
 if __name__ == '__main__':
     main()
