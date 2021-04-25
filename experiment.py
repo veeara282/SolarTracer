@@ -35,7 +35,7 @@ def random_search(train_loader: DataLoader, val_loader: DataLoader, num_trials: 
         # except for learning rate decay and epsilon
         optimizer = optim.RMSprop(model.parameters(), alpha=0.9, momentum=0.9, eps=0.001, lr=1e-3)
         print(f'Trial {t}: alpha = {alpha}, endpoints = {endpoints}')
-        metrics = train_multi_segmentation(model, train_loader, val_loader, optimizer)
+        metrics = train_multi_segmentation(model, train_loader, val_loader, optimizer, num_epochs=1)
         results.append({
             'trial': t,
             'alpha': alpha,
