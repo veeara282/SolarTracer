@@ -6,8 +6,9 @@ from multi_resolution_segmentation import MultiResolutionSegmentation, train_mul
 
 import argparse
 import numpy as np
-from operator import attrgetter
+from operator import itemgetter
 import heapq
+import json
 # TODO Implement our experimental design here
 
 def random_search(train_loader: DataLoader, val_loader: DataLoader, num_trials: int = 10, seed: int = 5670):
@@ -53,10 +54,16 @@ def print_results(results):
         print(f"F1: {result['f1']:.2%}")
         print()
 
+def log_stats(results, log_file):
+    # Make a copy of the results dicts minus the model key
+    results_without_models = [{k: v for k, v in res.items() if k != 'model'} for res in results]
+    with open(log_file, 'w') as f:
+        json.dump(results_without_models, f, indent=4)
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train and store the model')
     parser.add_argument('-o', '--out', metavar='model.pt', default='random_search.pt')
+    parser.add_argument('--logfile', metavar='log_file.json', default='random_search.json')
     parser.add_argument('-n', '--num-trials', type=int, default=10)
     parser.add_argument('--seed', type=int, default=5670)
     parser.add_argument('-b', '--batch-size', type=int, default=48)
@@ -75,11 +82,13 @@ def main():
     val_loader = DataLoader(val_set, batch_size=args.batch_size, shuffle=True, num_workers=4)
 
     results = random_search(train_loader, val_loader, num_trials=args.num_trials, seed=args.seed)
-    top_k = heapq.nlargest(3, results, key=attrgetter('f1'))
+    top_k = heapq.nlargest(3, results, key=itemgetter('f1'))
     print_results(top_k)
 
     best_model = top_k[0]['model']
     best_model.to_save_file(args.out)
+
+    log_stats(results, args.logfile)
 
 if __name__ == '__main__':
     main()
