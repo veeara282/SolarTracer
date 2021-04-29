@@ -1,10 +1,10 @@
 import torch
 from torch import nn, optim
 from torch.utils.data.dataloader import DataLoader
-from tqdm import tqdm, trange
+from tqdm import trange
 from torchvision.datasets import ImageFolder
 from torchvision import transforms
-from torch.cuda.amp import autocast, GradScaler
+from torch.cuda.amp import GradScaler
 from efficientnet_pytorch.model import EfficientNet
 from segmentation import to_device, train_or_eval, num_channels, cam_resolution
 
