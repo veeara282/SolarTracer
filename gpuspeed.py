@@ -1,4 +1,3 @@
-from segmentation import get_device
 import numpy as np
 import torch
 from torchvision.transforms import functional_pil as F_pil
@@ -58,7 +57,8 @@ def to_byte_tensor(pic):
 
 def to_float_tensor_gpu(tensor):
     '''Move the given tensor to the GPU, then convert it to float on the GPU, to reduce data transfer.'''
+    device = "cuda:0" if torch.cuda.is_available() else "cpu"
     if isinstance(tensor, torch.ByteTensor):
-        return tensor.to(get_device()).to(torch.get_default_dtype()).div(255)
+        return tensor.to(device).to(torch.get_default_dtype()).div(255)
     else:
-        return tensor.to(get_device())
+        return tensor.to(device)
