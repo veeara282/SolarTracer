@@ -12,6 +12,8 @@ from torch.cuda.amp import autocast, GradScaler
 from efficientnet_pytorch.model import EfficientNet
 import argparse
 
+from gpuspeed import to_byte_tensor, to_float_tensor_gpu
+
 def make_deterministic(seed=1337):
     random.seed(seed)
     np.random.seed(seed)
@@ -154,7 +156,8 @@ def train_or_eval(model: nn.Module,
             optimizer.zero_grad()
         # Do both autocast steps together
         with autocast(scaler is not None):
-            output = model(to_device(inputs))
+            inputs_float = to_float_tensor_gpu(inputs)
+            output = model(inputs_float)
             loss = model.loss_criterion(output, to_device(labels))
         # Accumulate metrics
         total_loss += loss.float().item()
@@ -215,7 +218,7 @@ def train_segmentation(model: EfficientNetSegmentation,
 
 transform = transforms.Compose([
     transforms.Resize((224, 224)),
-    transforms.ToTensor()
+    transforms.Lambda(to_byte_tensor)
 ])
 
 def parse_args():
