@@ -16,7 +16,16 @@ def random_rotate_reflect_90(pic: Image):
     - `Image.TRANSPOSE`, `Image.TRANSVERSE`: reflects the image over a diagonal line ±45 degrees from the horizontal.
     
     It can be shown that any two of these transformations composed together, or one of them repeated, is equivalent to
-    a single transformation of this set. https://en.wikipedia.org/wiki/Rotations_and_reflections_in_two_dimensions
+    a single transformation of this set. Mathematically:
+    - Two rotations by multiples of 90 degrees = rotation by a multiple of 90 degrees.
+    - Two reflections by multiples of 45 degrees = rotation by a multiple of 90 degrees.
+    - A rotation by a multiple of 90 degrees and a reflection by a multiple of 45 degrees, in either order = 
+    reflection by a multiple of 45 degrees.
+    
+    Source: https://en.wikipedia.org/wiki/Rotations_and_reflections_in_two_dimensions
+
+    This means that we can rotate and flip the image simultaneously with a single transformation instead of doing separate
+    horizontal and vertical flips.
     """
     transform = random.choice([None, Image.ROTATE_90, Image.ROTATE_180, Image.ROTATE_270,
                             Image.FLIP_LEFT_RIGHT, Image.FLIP_TOP_BOTTOM, Image.TRANSPOSE, Image.TRANSVERSE])
