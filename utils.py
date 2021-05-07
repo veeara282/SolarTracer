@@ -7,9 +7,19 @@ from torchvision import transforms
 from torchvision.transforms import functional_pil as F_pil
 from torchvision.transforms.functional import _is_numpy, _is_numpy_image
 
-def random_rotate_90(pic: Image):
-    """Applies a rotation by 0, 90, 180, or 270 degrees at random."""
-    transform = random.choice([None, Image.ROTATE_90, Image.ROTATE_180, Image.ROTATE_270])
+def random_rotate_reflect_90(pic: Image):
+    """Randomly applies one of the following transformations:
+    - `None`: leaves the image as is.
+    - `Image.ROTATE_90`, `Image.ROTATE_180`, `Image.ROTATE_270`: rotates by 90, 180, or 270 degrees respectively.
+    - `Image.FLIP_LEFT_RIGHT`: reflects the image over the horizontal axis.
+    - `Image.FLIP_TOP_BOTTOM`: reflects the image over the vertical axis.
+    - `Image.TRANSPOSE`, `Image.TRANSVERSE`: reflects the image over a diagonal line ±45 degrees from the horizontal.
+    
+    It can be shown that any two of these transformations composed together, or one of them repeated, is equivalent to
+    a single transformation of this set. https://en.wikipedia.org/wiki/Rotations_and_reflections_in_two_dimensions
+    """
+    transform = random.choice([None, Image.ROTATE_90, Image.ROTATE_180, Image.ROTATE_270,
+                            Image.FLIP_LEFT_RIGHT, Image.FLIP_TOP_BOTTOM, Image.TRANSPOSE, Image.TRANSVERSE])
     if transform is not None:
         return pic.transpose(transform)
     else:
@@ -82,8 +92,6 @@ transform = transforms.Compose([
 
 train_transform = transforms.Compose([
     transforms.Resize((224, 224)),
-    transforms.RandomVerticalFlip(),
-    transforms.RandomHorizontalFlip(),
-    transforms.Lambda(random_rotate_90),
+    transforms.Lambda(random_rotate_reflect_90),
     transforms.Lambda(to_byte_tensor)
 ])
