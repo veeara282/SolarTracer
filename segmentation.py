@@ -6,13 +6,12 @@ from torch import nn, optim
 from torch.utils.data.dataloader import DataLoader
 from tqdm import tqdm, trange
 from torchvision.datasets import ImageFolder
-from torchvision import transforms
 from torch.cuda.amp import autocast, GradScaler
 
 from efficientnet_pytorch.model import EfficientNet
 import argparse
 
-from gpuspeed import to_byte_tensor, to_float_tensor_gpu
+from utils import train_transform, transform, to_float_tensor_gpu
 
 def make_deterministic(seed=1337):
     random.seed(seed)
@@ -216,11 +215,6 @@ def train_segmentation(model: EfficientNetSegmentation,
     # Evaluate on validation set once at the end
     train_or_eval(model, val_loader, scaler=scaler)
 
-transform = transforms.Compose([
-    transforms.Resize((224, 224)),
-    transforms.Lambda(to_byte_tensor)
-])
-
 def parse_args():
     parser = argparse.ArgumentParser(description='Train and store the model')
     parser.add_argument('-o', '--out', metavar='model.pt', default='model.pt')
@@ -236,7 +230,7 @@ def parse_args():
 def main():
     args = parse_args()
 
-    train_set = ImageFolder(root=args.train_dir, transform=transform)
+    train_set = ImageFolder(root=args.train_dir, transform=train_transform)
     train_loader = DataLoader(train_set, batch_size=args.batch_size, shuffle=True, num_workers=4)
     
     val_set = ImageFolder(root=args.val_dir, transform=transform)

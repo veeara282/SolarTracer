@@ -1,8 +1,9 @@
 from torch import optim
 from torch.utils.data.dataloader import DataLoader
 from torchvision.datasets import ImageFolder
-from segmentation import to_device, transform
+from segmentation import to_device
 from multi_resolution_segmentation import MultiResolutionSegmentation, train_multi_segmentation
+from utils import train_transform, transform
 
 import argparse
 import numpy as np
@@ -75,7 +76,7 @@ def parse_args():
 def main():
     args = parse_args()
 
-    train_set = ImageFolder(root=args.train_dir, transform=transform)
+    train_set = ImageFolder(root=args.train_dir, transform=train_transform)
     train_loader = DataLoader(train_set, batch_size=args.batch_size, shuffle=True, num_workers=4)
     
     val_set = ImageFolder(root=args.val_dir, transform=transform)
