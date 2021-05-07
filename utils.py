@@ -1,7 +1,19 @@
+import random
+
 import numpy as np
+from PIL import Image
 import torch
+from torchvision import transforms
 from torchvision.transforms import functional_pil as F_pil
 from torchvision.transforms.functional import _is_numpy, _is_numpy_image
+
+def random_rotate_90(pic: Image):
+    """Applies a rotation by 0, 90, 180, or 270 degrees at random."""
+    transform = random.choice([None, Image.ROTATE_90, Image.ROTATE_180, Image.ROTATE_270])
+    if transform is not None:
+        return pic.transpose(transform)
+    else:
+        return pic
 
 '''Utility functions for reducing the data transfer bottleneck.
 
@@ -62,3 +74,16 @@ def to_float_tensor_gpu(tensor):
         return tensor.to(device).to(torch.get_default_dtype()).div(255)
     else:
         return tensor.to(device)
+
+transform = transforms.Compose([
+    transforms.Resize((224, 224)),
+    transforms.Lambda(to_byte_tensor)
+])
+
+train_transform = transforms.Compose([
+    transforms.Resize((224, 224)),
+    transforms.RandomVerticalFlip(),
+    transforms.RandomHorizontalFlip(),
+    transforms.Lambda(random_rotate_90),
+    transforms.Lambda(to_byte_tensor)
+])

@@ -3,10 +3,10 @@ from torch import nn, optim
 from torch.utils.data.dataloader import DataLoader
 from tqdm import trange
 from torchvision.datasets import ImageFolder
-from torchvision import transforms
 from torch.cuda.amp import GradScaler
 from efficientnet_pytorch.model import EfficientNet
-from segmentation import to_device, train_or_eval, num_channels, cam_resolution, transform
+from segmentation import to_device, train_or_eval, num_channels, cam_resolution
+from utils import transform, train_transform
 
 import argparse
 
@@ -158,7 +158,7 @@ def parse_args():
 def main():
     args = parse_args()
 
-    train_set = ImageFolder(root=args.train_dir, transform=transform)
+    train_set = ImageFolder(root=args.train_dir, transform=train_transform)
     train_loader = DataLoader(train_set, batch_size=args.batch_size, shuffle=True, num_workers=4)
     
     val_set = ImageFolder(root=args.val_dir, transform=transform)
