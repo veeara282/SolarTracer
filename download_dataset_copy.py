@@ -5,9 +5,9 @@ import requests
 import urllib.parse as urlparse
 import time
 import os
+import numpy as np
 import pandas as pd
 from tqdm import tqdm
-from IPython import embed
 # these are commented out but are needed to run (need to use different api key)
 api_key = ''
 secret = ''
@@ -84,21 +84,39 @@ def start_scraping():
     query = pd.read_csv('outputs/final_query.csv', index_col = 0)
     lat_lon = query[['latitude', 'longitude']].values
 
+    rng = np.random.default_rng()
+
     start_time = time.time()
+    # Keep track of the number of requests
+    num_requests = 0
     tqdm_obj = tqdm(range(lat_lon.shape[0]), desc = 'qps: 0')
     for idx in tqdm_obj:
-        # ensure that the number of requests < 500/s
-        if idx % 500 == 0:
-            time_passed = time.time() - start_time
-            if time_passed < (idx // 500):
-                time.sleep((idx // 500) - time_passed)
-            tqdm_obj.set_description(f'qps: {idx/time_passed:.4f}')
+        # Randomly sample from a 0.001 degree square neighborhood around the base poin
+        base_lat, base_lon = lat_lon[idx]
+        max_dist = 0.001
+        n_samples = 5
 
-        lat, lon = lat_lon[idx]
-        key = (f"{lat:.6f}", f"{lon:.6f}")
-        if key in img_names:
-            continue
-        save_img(lat, lon, f'outputs/images/{lat:.6f}_{lon:.6f}.png')
+        # Sample from a Gaussian distribution bounded by [center - max_dist, center + max_dist]
+        def random_coords(center):
+            samples = rng.normal(center, max_dist / 2, n_samples)
+            return np.clip(samples, center - max_dist, center + max_dist, out=samples)
+
+        lats = random_coords(base_lat)
+        lons = random_coords(base_lon)
+
+        for i in range(n_samples):
+            lat, lon = lats[i], lons[i]
+            key = (f"{lat:.6f}", f"{lon:.6f}")
+            if key in img_names:
+                continue
+            save_img(lat, lon, f'outputs/images/{lat:.6f}_{lon:.6f}.png')
+            num_requests += 1
+            # ensure that the number of requests < 500/s
+            if num_requests % 500 == 0:
+                time_passed = time.time() - start_time
+                if time_passed < (num_requests // 500):
+                    time.sleep((num_requests // 500) - time_passed)
+                tqdm_obj.set_description(f'qps: {num_requests/time_passed:.4f}')
 
 # query = pd.read_csv('outputs/final_query.csv', index_col = 0)
 # embed()
