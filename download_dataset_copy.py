@@ -61,11 +61,12 @@ def convert_params(parameter_dict):
 
 def develop_url(lat, lng):
     url = 'https://maps.googleapis.com/maps/api/staticmap?'
+    # DeepSolar paper: 320x320 images at zoom level 21
     params = {
             'center': f'{lat},{lng}',
-            'size': '512x512',
+            'size': '320x320',
             'maptype': 'satellite',
-            'zoom':'18',
+            'zoom':'21',
             'key': api_key
     }
     url = f'{url}{convert_params(params)}'
