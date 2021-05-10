@@ -131,3 +131,4 @@ SPI_test
 .vscode/settings.json
 *.pt
 api_key.json
+outputs/images/
