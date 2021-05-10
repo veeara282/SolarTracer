@@ -79,9 +79,11 @@ def develop_url(lat, lng):
 def save_img(lat, lng, fn):
     url = develop_url(lat, lng)
     r = requests.get(url)
-    f = open(fn, 'wb')
-    f.write(r.content)
-    f.close()
+    if r.ok:
+        with open(fn, 'wb') as f:
+            f.write(r.content)
+    else:
+        raise Exception(f"Request returned with status {r.status_code}. Error message: {r.content}")
 
 def start_scraping():
     img_names = set([tuple(x.replace(".png", "").split("_")) for x in os.listdir('outputs/images/')])
