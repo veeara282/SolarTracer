@@ -132,3 +132,4 @@ SPI_test
 *.pt
 api_key.json
 outputs/images/
+*.zip
