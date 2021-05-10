@@ -8,9 +8,13 @@ import os
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
-# these are commented out but are needed to run (need to use different api key)
-api_key = ''
-secret = ''
+import json
+
+# Load Maps Platform API and signing secret from JSON file
+with open("api_key.json", "r") as f:
+    credentials = json.load(f)
+    api_key = credentials['api_key']
+    secret = credentials['secret']
 
 # lat, lng = 51.507574, -0.127835
 # lat, lng = 51.5252601, 0.1276249 # first const site
