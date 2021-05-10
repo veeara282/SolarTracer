@@ -86,7 +86,7 @@ def save_img(lat, lng, fn):
 def start_scraping():
     img_names = set([tuple(x.replace(".png", "").split("_")) for x in os.listdir('outputs/images/')])
     # lat_lon = np.load('outputs/lat_lon_query.npy')
-    query = pd.read_csv('outputs/final_query.csv', index_col = 0)
+    query = pd.read_csv('outputs/final_query.csv')
     lat_lon = query[['latitude', 'longitude']].values
 
     rng = np.random.default_rng()
