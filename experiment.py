@@ -7,10 +7,12 @@ from utils import train_transform, transform
 
 import argparse
 import numpy as np
-from operator import itemgetter
 import heapq
 import json
-# TODO Implement our experimental design here
+
+# Use different learning rates
+lr_round_1 = 1e-3
+lr_round_2 = 3e-4
 
 def random_search(train_loader: DataLoader, val_loader: DataLoader, num_trials: int = 10, seed: int = 5670):
     rng = np.random.default_rng(seed)
@@ -35,17 +37,27 @@ def random_search(train_loader: DataLoader, val_loader: DataLoader, num_trials: 
         model = to_device(MultiResolutionSegmentation(pos_class_weight=alpha, endpoints=endpoints))
         # Use RMSProp parameters from the DeepSolar paper (alpha = second moment discount rate)
         # except for learning rate decay and epsilon
-        optimizer = optim.RMSprop(model.parameters(), alpha=0.9, momentum=0.9, eps=0.001, lr=1e-3)
+        optimizer = optim.RMSprop(model.parameters(), alpha=0.9, momentum=0.9, lr=lr_round_1)
         print(f'Trial {t}: alpha = {alpha}, endpoints = {endpoints}')
         metrics = train_multi_segmentation(model, train_loader, val_loader, optimizer, num_epochs=1)
         results.append({
             'trial': t,
             'alpha': alpha,
             'endpoints': endpoints,
-            **metrics,
-            'model': model.cpu() # Get it off the GPU to conserve memory
+            'model': model.cpu(), # Get it off the GPU to conserve memory
+            'round_1': metrics
         })
     return results
+
+def fine_tuning(models_metadata: list, train_loader: DataLoader, val_loader: DataLoader, num_epochs: int):
+    for i, data in enumerate(models_metadata):
+        model = to_device(data['model'])
+        optimizer = optim.RMSprop(model.parameters(), alpha=0.9, momentum=0.9, lr=lr_round_2)
+        metrics = train_multi_segmentation(model, train_loader, val_loader, optimizer, num_epochs=num_epochs)
+        # These should add/update the fields of the item in models_metadata
+        data['round_2'] = metrics
+        data['model'] = model.cpu()
+    return models_metadata
 
 def print_results(results):
     for result in results:
@@ -55,11 +67,16 @@ def print_results(results):
         print(f"F1: {result['f1']:.2%}")
         print()
 
-def log_stats(results, log_file):
+def log_stats(results_round_1, results_round_2, log_file):
     # Make a copy of the results dicts minus the model key
-    results_without_models = [{k: v for k, v in res.items() if k != 'model'} for res in results]
+    results_without_models_round_1 = [{k: v for k, v in res.items() if k != 'model'} for res in results_round_1]
+    results_without_models_round_2 = [{k: v for k, v in res.items() if k != 'model'} for res in results_round_2]
+    all_results = {
+        'round_1': results_without_models_round_1,
+        'round_2': results_without_models_round_2
+    }
     with open(log_file, 'w') as f:
-        json.dump(results_without_models, f, indent=4)
+        json.dump(all_results, f, indent=4)
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train and store the model')
@@ -71,25 +88,40 @@ def parse_args():
     # parser.add_argument('-m', '--mixed-precision', action='store_true')
     parser.add_argument('--train-dir', default='./SPI_train/')
     parser.add_argument('--val-dir', default='./SPI_val/')
+    parser.add_argument('--ny-train-dir', default='./NY_dataset/train/')
+    parser.add_argument('--ny-val-dir', default='./NY_dataset/val/')
     return parser.parse_args()
 
 def main():
     args = parse_args()
 
+    # Use the original DeepSolar dataset for the first round of transfer learning
     train_set = ImageFolder(root=args.train_dir, transform=train_transform)
     train_loader = DataLoader(train_set, batch_size=args.batch_size, shuffle=True, num_workers=4)
     
     val_set = ImageFolder(root=args.val_dir, transform=transform)
     val_loader = DataLoader(val_set, batch_size=args.batch_size, shuffle=True, num_workers=4)
 
-    results = random_search(train_loader, val_loader, num_trials=args.num_trials, seed=args.seed)
-    top_k = heapq.nlargest(3, results, key=itemgetter('f1'))
+    results_round_1 = random_search(train_loader, val_loader, num_trials=args.num_trials, seed=args.seed)
+    top_k = heapq.nlargest(3, results_round_1, key=lambda elt: elt['round_1']['f1'])
     print_results(top_k)
 
-    best_model = top_k[0]['model']
+    # Use our NY dataset for the second round
+    ny_train_set = ImageFolder(root=args.ny_train_dir, transform=train_transform)
+    ny_train_loader = DataLoader(ny_train_set, batch_size=args.batch_size, shuffle=True, num_workers=4)
+    
+    ny_val_set = ImageFolder(root=args.ny_val_dir, transform=transform)
+    ny_val_loader = DataLoader(ny_val_set, batch_size=args.batch_size, shuffle=True, num_workers=4)
+
+    results_round_2 = fine_tuning(top_k, ny_train_loader, ny_val_loader, 10)
+    print_results(results_round_2)
+
+    # Save model with best performance on NY dataset
+    results_round_2.sort(key=lambda elt: elt['round_2']['f1'], reverse=True)
+    best_model = results_round_2[0]['model']
     best_model.to_save_file(args.out)
 
-    log_stats(results, args.logfile)
+    log_stats(results_round_1, results_round_2, args.logfile)
 
 if __name__ == '__main__':
     main()
