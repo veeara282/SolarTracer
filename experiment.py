@@ -59,12 +59,12 @@ def fine_tuning(models_metadata: list, train_loader: DataLoader, val_loader: Dat
         data['model'] = model.cpu()
     return models_metadata
 
-def print_results(results):
+def print_results(results, round):
     for result in results:
         print(f"Trial {result['trial']}: alpha = {result['alpha']}, endpoints = {result['endpoints']}")
-        print(f"Precision: {result['precision']:.2%}")
-        print(f"Recall: {result['recall']:.2%}")
-        print(f"F1: {result['f1']:.2%}")
+        print(f"Precision: {result[round]['precision']:.2%}")
+        print(f"Recall: {result[round]['recall']:.2%}")
+        print(f"F1: {result[round]['f1']:.2%}")
         print()
 
 def log_stats(results_round_1, results_round_2, log_file):
@@ -104,7 +104,7 @@ def main():
 
     results_round_1 = random_search(train_loader, val_loader, num_trials=args.num_trials, seed=args.seed)
     top_k = heapq.nlargest(3, results_round_1, key=lambda elt: elt['round_1']['f1'])
-    print_results(top_k)
+    print_results(top_k, 'round_1')
 
     # Use our NY dataset for the second round
     ny_train_set = ImageFolder(root=args.ny_train_dir, transform=train_transform)
@@ -114,7 +114,7 @@ def main():
     ny_val_loader = DataLoader(ny_val_set, batch_size=args.batch_size, shuffle=True, num_workers=4)
 
     results_round_2 = fine_tuning(top_k, ny_train_loader, ny_val_loader, 10)
-    print_results(results_round_2)
+    print_results(results_round_2, 'round_2')
 
     # Save model with best performance on NY dataset
     results_round_2.sort(key=lambda elt: elt['round_2']['f1'], reverse=True)
