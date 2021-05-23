@@ -14,7 +14,13 @@ import json
 lr_round_1 = 1e-3
 lr_round_2 = 3e-4
 
-def random_search(train_loader: DataLoader, val_loader: DataLoader, num_trials: int = 10, seed: int = 5670):
+def random_search(train_loader: DataLoader,
+                  val_loader: DataLoader,
+                  ny_train_loader: DataLoader,
+                  ny_val_loader: DataLoader,
+                  num_trials: int = 10,
+                  seed: int = 5670,
+                  ny_num_epochs: int = 10):
     rng = np.random.default_rng(seed)
     alpha_values = rng.uniform(4, 16, num_trials)
     # To generate combinations of endpoints:
@@ -39,13 +45,18 @@ def random_search(train_loader: DataLoader, val_loader: DataLoader, num_trials: 
         # except for learning rate decay and epsilon
         optimizer = optim.RMSprop(model.parameters(), alpha=0.9, momentum=0.9, lr=lr_round_1)
         print(f'Trial {t}: alpha = {alpha}, endpoints = {endpoints}')
-        metrics = train_multi_segmentation(model, train_loader, val_loader, optimizer, num_epochs=1)
+        # Round 1
+        metrics_round_1 = train_multi_segmentation(model, train_loader, val_loader, optimizer, num_epochs=1)
+        # Round 2
+        optimizer = optim.RMSprop(model.parameters(), alpha=0.9, momentum=0.9, lr=lr_round_2)
+        metrics_round_2 = train_multi_segmentation(model, ny_train_loader, ny_val_loader, optimizer, num_epochs=ny_num_epochs)
         results.append({
             'trial': t,
             'alpha': alpha,
             'endpoints': endpoints,
             'model': model.cpu(), # Get it off the GPU to conserve memory
-            'round_1': metrics
+            'round_1': metrics_round_1,
+            'round_2': metrics_round_2
         })
     return results
 
@@ -97,10 +108,6 @@ def main():
     val_set = ImageFolder(root=args.val_dir, transform=transform)
     val_loader = DataLoader(val_set, batch_size=args.batch_size, shuffle=True, num_workers=4)
 
-    results_round_1 = random_search(train_loader, val_loader, num_trials=args.num_trials, seed=args.seed)
-    top_k = heapq.nlargest(3, results_round_1, key=lambda elt: elt['round_1']['f1'])
-    print_results(top_k, 'round_1')
-
     # Use our NY dataset for the second round
     ny_train_set = ImageFolder(root=args.ny_train_dir, transform=train_transform)
     ny_train_loader = DataLoader(ny_train_set, batch_size=args.batch_size, shuffle=True, num_workers=4)
@@ -108,16 +115,23 @@ def main():
     ny_val_set = ImageFolder(root=args.ny_val_dir, transform=transform)
     ny_val_loader = DataLoader(ny_val_set, batch_size=args.batch_size, shuffle=True, num_workers=4)
 
-    results_round_2 = fine_tuning(top_k, ny_train_loader, ny_val_loader, 10)
-    print_results(results_round_2, 'round_2')
+    results = random_search(train_loader,
+                            val_loader,
+                            ny_train_loader,
+                            ny_val_loader,
+                            num_trials=args.num_trials,
+                            seed=args.seed,
+                            ny_num_epochs=10)
+    
+    # Print results for top k trials w.r.t. performance on NY dataset
+    top_k = heapq.nlargest(3, results, key=lambda elt: elt['round_2']['f1'])
+    print_results(top_k, 'round_2')
 
     # Save model with best performance on NY dataset
-    results_round_2.sort(key=lambda elt: elt['round_2']['f1'], reverse=True)
-    best_model = results_round_2[0]['model']
+    best_model = top_k[0]['model']
     best_model.to_save_file(args.out)
 
-    # results_round_1 contains round 2 data
-    log_stats(results_round_1, args.logfile)
+    log_stats(results, args.logfile)
 
 if __name__ == '__main__':
     main()
