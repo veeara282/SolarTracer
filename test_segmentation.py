@@ -8,7 +8,7 @@ from PIL import Image
 from tqdm.std import tqdm
 
 from .segmentation import EfficientNetSegmentation, to_device, train_or_eval
-from utils import transform
+from utils import transform, target_transform, threshold
 import argparse
 import os
 import re
@@ -26,20 +26,6 @@ def classification_test_set(root, **kwargs):
 
     # Add them all to a ConcatDataset
     return ConcatDataset(subsets)
-
-def threshold(image_mask: torch.FloatTensor, threshold=0.6) -> torch.ByteTensor:
-    '''Converts a FloatTensor to a binary LongTensor using a threshold.'''
-    return (image_mask > threshold).to(torch.uint8)
-
-# The transformation applied to image segmentation masks.
-# Image masks are 8-bit grayscale PNG images (mode L), so transforms.Grayscale is a no-op.
-target_transform = transforms.Compose([
-    # no-op, but just in case the image format is different from expected
-    transforms.Grayscale(num_output_channels=1),
-    transforms.Resize((112, 112)),
-    transforms.ToTensor(),
-    transforms.Lambda(threshold)
-])
 
 class SegmentationTestSet(Dataset):
     def __init__(self, root, transform = transform, target_transform = target_transform):

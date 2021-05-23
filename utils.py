@@ -34,6 +34,10 @@ def random_rotate_reflect_90(pic: Image):
     else:
         return pic
 
+def threshold(image_mask: torch.FloatTensor, threshold=0.6) -> torch.ByteTensor:
+    '''Converts a FloatTensor to a binary LongTensor using a threshold.'''
+    return (image_mask > threshold).to(torch.uint8)
+
 '''Utility functions for reducing the data transfer bottleneck.
 
 Idea: move image tensors to the GPU *before* converting them to the default floating-point type,
@@ -103,4 +107,14 @@ train_transform = transforms.Compose([
     transforms.Resize((224, 224)),
     transforms.Lambda(random_rotate_reflect_90),
     transforms.Lambda(to_byte_tensor)
+])
+
+# The transformation applied to image segmentation masks.
+# Image masks are 8-bit grayscale PNG images (mode L), so transforms.Grayscale is a no-op.
+target_transform = transforms.Compose([
+    # no-op, but just in case the image format is different from expected
+    transforms.Grayscale(num_output_channels=1),
+    transforms.Resize((112, 112)),
+    transforms.ToTensor(),
+    transforms.Lambda(threshold)
 ])
