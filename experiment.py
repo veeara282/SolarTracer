@@ -67,16 +67,11 @@ def print_results(results, round):
         print(f"F1: {result[round]['f1']:.2%}")
         print()
 
-def log_stats(results_round_1, results_round_2, log_file):
+def log_stats(results, log_file):
     # Make a copy of the results dicts minus the model key
-    results_without_models_round_1 = [{k: v for k, v in res.items() if k != 'model'} for res in results_round_1]
-    results_without_models_round_2 = [{k: v for k, v in res.items() if k != 'model'} for res in results_round_2]
-    all_results = {
-        'round_1': results_without_models_round_1,
-        'round_2': results_without_models_round_2
-    }
+    results_without_models = [{k: v for k, v in res.items() if k != 'model'} for res in results]
     with open(log_file, 'w') as f:
-        json.dump(all_results, f, indent=4)
+        json.dump(results_without_models, f, indent=4)
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train and store the model')
@@ -121,7 +116,8 @@ def main():
     best_model = results_round_2[0]['model']
     best_model.to_save_file(args.out)
 
-    log_stats(results_round_1, results_round_2, args.logfile)
+    # results_round_1 contains round 2 data
+    log_stats(results_round_1, args.logfile)
 
 if __name__ == '__main__':
     main()
