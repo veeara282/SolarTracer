@@ -5,8 +5,8 @@ from tqdm import trange
 from torchvision.datasets import ImageFolder
 from torch.cuda.amp import GradScaler
 from efficientnet_pytorch.model import EfficientNet
-from segmentation import to_device, train_or_eval, num_channels, cam_resolution
-from utils import transform, train_transform
+from segmentation import num_channels, cam_resolution
+from utils import to_device, train_or_eval, transform, train_transform
 
 import argparse
 

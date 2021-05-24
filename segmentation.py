@@ -4,14 +4,14 @@ import numpy as np
 import torch
 from torch import nn, optim
 from torch.utils.data.dataloader import DataLoader
-from tqdm import tqdm, trange
+from tqdm import trange
 from torchvision.datasets import ImageFolder
-from torch.cuda.amp import autocast, GradScaler
+from torch.cuda.amp import GradScaler
 
 from efficientnet_pytorch.model import EfficientNet
 import argparse
 
-from utils import train_transform, transform, to_float_tensor_gpu
+from utils import train_transform, transform, train_or_eval, to_device
 
 def make_deterministic(seed=1337):
     random.seed(seed)
@@ -19,12 +19,6 @@ def make_deterministic(seed=1337):
     torch.manual_seed(seed)
     torch.set_deterministic(True)
     torch.backends.cudnn.benchmark = False
-
-def get_device():
-    return "cuda:0" if torch.cuda.is_available() else "cpu"
-
-def to_device(obj):
-    return obj.to(get_device())
 
 def cam_resolution(backbone='efficientnet-b0', endpoint=1):
     if endpoint in range(1, 6):
@@ -135,65 +129,6 @@ class EfficientNetSegmentation(nn.Module):
         model = cls(from_pretrained=False, **params)
         model.load_state_dict(state_dict)
         return to_device(model)
-
-def train_or_eval(model: nn.Module,
-                  data_loader: DataLoader,
-                  optimizer: optim.Optimizer = None,
-                  scaler: GradScaler = None):
-    if optimizer:
-        model.train()
-    else:
-        model.eval()
-    total = 0
-    total_loss = 0
-    correct = 0
-    true_pos, all_true, all_pos = 0, 0, 0
-    for batch in tqdm(data_loader, desc=("Training Batches" if optimizer else "Validation Batches")):
-        inputs, labels = batch[0], batch[1]
-        # Reset the optimizer first
-        if optimizer:
-            optimizer.zero_grad()
-        # Do both autocast steps together
-        with autocast(scaler is not None):
-            inputs_float = to_float_tensor_gpu(inputs)
-            output = model(inputs_float)
-            loss = model.loss_criterion(output, to_device(labels))
-        # Accumulate metrics
-        total_loss += loss.float().item()
-        total += output.size()[0]
-        predicted = torch.argmax(output, 1).cpu()
-        correct += (labels == predicted).numpy().sum()
-        true_pos += (labels & predicted).numpy().sum()
-        all_true += labels.numpy().sum()
-        all_pos += predicted.numpy().sum()
-        # Training step
-        if optimizer:
-            if scaler:
-                scaler.scale(loss).backward()
-                scaler.step(optimizer)
-                scaler.update()
-            else:
-                loss.backward()
-                optimizer.step()
-    # Compute metrics
-    total_loss /= total
-    precision = true_pos / all_pos
-    recall = true_pos / all_true
-    f1 = 2 * precision * recall / (precision + recall)
-    # Print accuracy
-    print('Training Results:' if optimizer else 'Validation Results:')
-    print(f'Loss: {total_loss:.4f}')
-    print(f'Correct: {correct} ({correct / total:.2%})')
-    print(f'Precision: {true_pos} / {all_pos} ({precision:.2%})')
-    print(f'Recall: {true_pos} / {all_true} ({recall:.2%})')
-    print(f'F1: {f1:.2%}')
-    print(f'Total: {total}\n')
-    return {
-        'loss': total_loss,
-        'precision': precision,
-        'recall': recall,
-        'f1': f1
-    }
 
 
 def train_segmentation(model: EfficientNetSegmentation,

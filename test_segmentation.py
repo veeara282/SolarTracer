@@ -7,8 +7,8 @@ from torchvision import transforms
 from PIL import Image
 from tqdm.std import tqdm
 
-from .segmentation import EfficientNetSegmentation, to_device, train_or_eval
-from utils import transform, target_transform, threshold
+from .segmentation import EfficientNetSegmentation
+from utils import transform, target_transform, threshold, to_device, train_or_eval
 import argparse
 import os
 import re

@@ -1,9 +1,8 @@
 from torch import optim
 from torch.utils.data.dataloader import DataLoader
 from torchvision.datasets import ImageFolder
-from segmentation import to_device
 from multi_resolution_segmentation import MultiResolutionSegmentation, train_multi_segmentation
-from utils import train_transform, transform
+from utils import train_transform, transform, to_device
 
 import argparse
 import numpy as np
