@@ -75,7 +75,7 @@ class MultiResolutionSegmentation(nn.Module):
 
     def set_alpha(self, pos_class_weight):
         class_weights = torch.FloatTensor([1.0, pos_class_weight])
-        self.loss_criterion = nn.CrossEntropyLoss(weight=class_weights)
+        self.loss_criterion = to_device(nn.CrossEntropyLoss(weight=class_weights))
 
     def forward(self, inputs, return_cam=False):
         # Extract hidden states from EfficientNet endpoints
