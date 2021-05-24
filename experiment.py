@@ -2,7 +2,7 @@ from torch import optim
 from torch.utils.data.dataloader import DataLoader
 from torchvision.datasets import ImageFolder
 from multi_resolution_segmentation import MultiResolutionSegmentation, train_multi_segmentation
-from utils import train_transform, transform, to_device, SegmentationDataset
+from utils import train_transform, transform, to_device, SegmentationDataset, eval_segmentation, is_regular_img
 
 import argparse
 import numpy as np
@@ -17,6 +17,7 @@ def random_search(train_loader: DataLoader,
                   val_loader: DataLoader,
                   ny_train_loader: DataLoader,
                   ny_val_loader: DataLoader,
+                  ny_val_loader_seg: DataLoader,
                   num_trials: int = 10,
                   seed: int = 5670,
                   ny_num_epochs: int = 10):
@@ -48,12 +49,8 @@ def random_search(train_loader: DataLoader,
         metrics_round_1 = train_multi_segmentation(model, train_loader, val_loader, optimizer, num_epochs=1)
         # Round 2
         optimizer = optim.RMSprop(model.parameters(), alpha=0.9, momentum=0.9, lr=lr_round_2)
-        metrics_round_2 = train_multi_segmentation(model,
-                                                   ny_train_loader,
-                                                   ny_val_loader,
-                                                   optimizer,
-                                                   num_epochs=ny_num_epochs,
-                                                   val_loader_type='seg')
+        metrics_round_2 = train_multi_segmentation(model, ny_train_loader, ny_val_loader, optimizer, num_epochs=ny_num_epochs)
+        metrics_round_2.update(eval_segmentation(model, ny_val_loader_seg))
         results.append({
             'trial': t,
             'alpha': alpha,
@@ -127,14 +124,16 @@ def main():
     ny_train_set = ImageFolder(root=args.ny_train_dir, transform=train_transform)
     ny_train_loader = DataLoader(ny_train_set, batch_size=args.batch_size, shuffle=True, num_workers=4)
     
-    ny_val_set = SegmentationDataset(args.ny_val_dir)
-    # ny_val_set = ImageFolder(root=args.ny_val_dir, transform=transform)
+    ny_val_set = ImageFolder(root=args.ny_val_dir, transform=transform, is_valid_file=is_regular_img)
     ny_val_loader = DataLoader(ny_val_set, batch_size=args.batch_size, shuffle=True, num_workers=4)
+    ny_val_set_seg = SegmentationDataset(args.ny_val_dir)
+    ny_val_loader_seg = DataLoader(ny_val_set_seg, batch_size=args.batch_size, shuffle=True, num_workers=4)
 
     results = random_search(train_loader,
                             val_loader,
                             ny_train_loader,
                             ny_val_loader,
+                            ny_val_loader_seg,
                             num_trials=args.num_trials,
                             seed=args.seed,
                             ny_num_epochs=10)

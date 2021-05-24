@@ -129,13 +129,17 @@ target_transform = transforms.Compose([
     transforms.Lambda(threshold)
 ])
 
+# Returns true if the file represented by path is a regular image (i.e. not a segmentation mask)
+def is_regular_img(path):
+    return re.search(r'(\d+)\.\w+', path)
+
 class SegmentationDataset(Dataset):
     def __init__(self, root, transform = transform, target_transform = target_transform):
         # create an index of (image, mask) file path pairs
         self.samples = []
         #iterate through only positive folder (/1)
         pos_dir = os.path.join(root, '1')
-        valid_imgs = [entry.path for entry in os.scandir(pos_dir) if re.search(r'(\d+)\.\w+', entry.path)]
+        valid_imgs = [entry.path for entry in os.scandir(pos_dir) if is_regular_img(entry.path)]
         for img in valid_imgs:
             stem, _ = os.path.splitext(img)
             self.samples.append((img, f"{stem}_true_seg.png"))
