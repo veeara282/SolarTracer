@@ -11,7 +11,7 @@ import json
 
 # Use different learning rates
 lr_round_1 = 1e-3
-lr_round_2 = 3e-4
+lr_round_2 = 3e-5
 
 def random_search(train_loader: DataLoader,
                   val_loader: DataLoader,
