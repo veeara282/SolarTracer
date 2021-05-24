@@ -8,7 +8,6 @@ from efficientnet_pytorch.model import EfficientNet
 from segmentation import num_channels, cam_resolution
 from utils import eval_segmentation, to_device, train_or_eval, transform, train_transform
 
-from typing import Literal
 import argparse
 
 class ClassActivationMap2d(nn.Module):
@@ -135,7 +134,7 @@ def train_multi_segmentation(model: MultiResolutionSegmentation,
                              train_loader: DataLoader,
                              val_loader: DataLoader,
                              optimizer: optim.Optimizer,
-                             val_loader_type: Literal['class', 'seg'] = 'class',
+                             val_loader_type: str = 'class',
                              scaler: GradScaler = None,
                              num_epochs: int = 3):
     # Don't train the backbone
