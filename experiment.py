@@ -79,7 +79,7 @@ def fine_tuning(models_metadata: list, train_loader: DataLoader, val_loader: Dat
 
 def print_results(results, round):
     for result in results:
-        print(f"Trial {result['trial']}: alpha = {result['alpha']}, endpoints = {result['endpoints']}")
+        print(f"Trial {result['trial']}: alpha1 = {result['alpha1']}, alpha2 = {result['alpha2']}, endpoints = {result['endpoints']}")
         print(f"Round {round}")
         stats = result[round]
         if 'precision' in stats:
