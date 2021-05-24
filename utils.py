@@ -12,7 +12,7 @@ from torch.utils.data.dataloader import DataLoader
 from torchvision import transforms
 from torchvision.transforms import functional_pil as F_pil
 from torchvision.transforms.functional import _is_numpy, _is_numpy_image
-import tqdm
+from tqdm import tqdm
 
 def to_device(obj):
     return obj.to("cuda:0" if torch.cuda.is_available() else "cpu")
