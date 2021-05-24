@@ -100,7 +100,9 @@ class MultiResolutionSegmentation(nn.Module):
             return self.softmax(cam)[:, 1]
         else:
             # Remove the (H, W) dimensions
-            return torch.squeeze(cam)
+            cam = torch.squeeze(cam, -1)
+            cam = torch.squeeze(cam, -1)
+            return cam
 
     def freeze_backbone(self):
         '''Freezes the backbone.'''
