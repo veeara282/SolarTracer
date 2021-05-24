@@ -22,7 +22,10 @@ def random_search(train_loader: DataLoader,
                   seed: int = 5670,
                   ny_num_epochs: int = 10):
     rng = np.random.default_rng(seed)
-    alpha_values = rng.uniform(4, 16, num_trials)
+    # Set alpha to a higher value during training on DeepSolar dataset because it's unbalanced
+    alpha1_values = rng.uniform(4, 16, num_trials)
+    # Set alpha to a lower value during fine tuning
+    alpha2_values = rng.uniform(1, 8, num_trials)
     # To generate combinations of endpoints:
     # 1. For each trial, generate 4 random integers in {0, 1}
     # 2. If all of them are 0, generate another 4 random integers
@@ -36,24 +39,27 @@ def random_search(train_loader: DataLoader,
     results = []
     # Start random search
     for t in range(num_trials):
-        alpha = alpha_values[t]
+        alpha1 = alpha1_values[t]
+        alpha2 = alpha2_values[t]
         # Class constructor expects a list of endpoint numbers, not a bit vector
         endpoints = [k + 1 for k in range(4) if endpoints_values[t, k]]
         # Create and train model
-        model = to_device(MultiResolutionSegmentation(pos_class_weight=alpha, endpoints=endpoints))
+        model = to_device(MultiResolutionSegmentation(pos_class_weight=alpha1, endpoints=endpoints))
+        print(f'Trial {t}: alpha1 = {alpha1}, alpha2 = {alpha2}, endpoints = {endpoints}')
         # Use RMSProp parameters from the DeepSolar paper (alpha = second moment discount rate)
         # except for learning rate decay and epsilon
         optimizer = optim.RMSprop(model.parameters(), alpha=0.9, momentum=0.9, lr=lr_round_1)
-        print(f'Trial {t}: alpha = {alpha}, endpoints = {endpoints}')
         # Round 1
         metrics_round_1 = train_multi_segmentation(model, train_loader, val_loader, optimizer, num_epochs=1)
         # Round 2
+        model.set_alpha(alpha2)
         optimizer = optim.RMSprop(model.parameters(), alpha=0.9, momentum=0.9, lr=lr_round_2)
         metrics_round_2 = train_multi_segmentation(model, ny_train_loader, ny_val_loader, optimizer, num_epochs=ny_num_epochs)
         metrics_round_2.update(eval_segmentation(model, ny_val_loader_seg))
         results.append({
             'trial': t,
-            'alpha': alpha,
+            'alpha1': alpha1,
+            'alpha2': alpha2,
             'endpoints': endpoints,
             'model': model.cpu(), # Get it off the GPU to conserve memory
             'round_1': metrics_round_1,

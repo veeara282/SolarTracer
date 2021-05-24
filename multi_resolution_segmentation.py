@@ -71,6 +71,9 @@ class MultiResolutionSegmentation(nn.Module):
         # Softmax over channels if outputting CAM
         self.softmax = nn.Softmax(dim=1)
         # Loss function
+        self.set_alpha(pos_class_weight)
+
+    def set_alpha(self, pos_class_weight):
         class_weights = torch.FloatTensor([1.0, pos_class_weight])
         self.loss_criterion = nn.CrossEntropyLoss(weight=class_weights)
 
