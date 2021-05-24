@@ -230,7 +230,8 @@ def eval_segmentation(model: torch.nn.Module, data_loader: DataLoader):
     for batch in tqdm(data_loader, desc="Test segmentation"):
         # These are tensors of input images and segmentation masks respectively
         inputs, masks = batch[0], torch.squeeze(batch[1], 1)
-        output_cams = model(to_device(inputs), return_cam=True)
+        inputs_float = to_float_tensor_gpu(inputs)
+        output_cams = model(inputs_float, return_cam=True)
         # Compare model output and true segmentation mask on GPU
         outputs = threshold(output_cams)
         masks = to_device(masks)
