@@ -6,7 +6,7 @@ from torchvision.datasets import ImageFolder
 from torch.cuda.amp import GradScaler
 from efficientnet_pytorch.model import EfficientNet
 from segmentation import num_channels, cam_resolution
-from utils import to_device, train_or_eval, transform, train_transform
+from utils import eval_segmentation, to_device, train_or_eval, transform, train_transform
 
 import argparse
 
@@ -134,6 +134,7 @@ def train_multi_segmentation(model: MultiResolutionSegmentation,
                              train_loader: DataLoader,
                              val_loader: DataLoader,
                              optimizer: optim.Optimizer,
+                             val_loader_type: str = 'class',
                              scaler: GradScaler = None,
                              num_epochs: int = 3):
     # Don't train the backbone
@@ -142,7 +143,10 @@ def train_multi_segmentation(model: MultiResolutionSegmentation,
     for epoch in trange(num_epochs, desc=f'Training'):
         train_or_eval(model, train_loader, optimizer, scaler)
     # Evaluate on validation set once at the end
-    return train_or_eval(model, val_loader, scaler=scaler)
+    if val_loader_type == 'class':
+        return train_or_eval(model, val_loader, scaler=scaler)
+    elif val_loader_type == 'seg':
+        return eval_segmentation(model, val_loader)
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train and store the model')

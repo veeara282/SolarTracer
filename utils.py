@@ -250,3 +250,8 @@ def eval_segmentation(model: torch.nn.Module, data_loader: DataLoader):
     print(f'Average precision: {avg_precision:.2%}')
     print(f'Average recall: {avg_recall:.2%}')
     print(f'Number of examples: {example_count}')
+    return {
+        'avg_jaccard': avg_jaccard,
+        'avg_precision': avg_precision,
+        'avg_recall': avg_recall
+    }

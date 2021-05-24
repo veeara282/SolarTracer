@@ -8,7 +8,7 @@ from PIL import Image
 from tqdm.std import tqdm
 
 from .segmentation import EfficientNetSegmentation
-from utils import transform, target_transform, threshold, to_device, train_or_eval
+from utils import transform, target_transform, train_or_eval, eval_segmentation
 import argparse
 import os
 import re
@@ -52,46 +52,6 @@ class SegmentationTestSet(Dataset):
 
     def __len__(self):
         return len(self.samples)
-
-def sum_2d(mask):
-    return torch.sum(mask, dim=(1, 2), dtype=torch.int32)
-
-def divide_and_sum(quantity1, quantity2):
-    return torch.sum(quantity1 / quantity2).cpu().item()
-
-def eval_segmentation(model: torch.nn.Module, data_loader: DataLoader):
-    model.eval()
-    total_jaccard = 0.0
-    total_precision = 0.0
-    total_recall = 0.0
-    example_count = 0
-    for batch in tqdm(data_loader, desc="Test segmentation"):
-        # These are tensors of input images and segmentation masks respectively
-        inputs, masks = batch[0], torch.squeeze(batch[1], 1)
-        output_cams = model(to_device(inputs), return_cam=True)
-        # Compare model output and true segmentation mask on GPU
-        outputs = threshold(output_cams)
-        masks = to_device(masks)
-        # Compute Jaccard similarity, precision, and recall for each example
-        intersection = torch.logical_and(outputs, masks).to(torch.uint8)
-        union = torch.logical_or(outputs, masks).to(torch.uint8)
-        count_intersection = sum_2d(intersection)
-        count_union = sum_2d(union)
-        count_pred = sum_2d(outputs)
-        count_gold = sum_2d(masks)
-        # Sum up Jaccard similarity, precision, and recall
-        total_jaccard += divide_and_sum(count_intersection, count_union)
-        total_precision += divide_and_sum(count_intersection, count_pred)
-        total_recall += divide_and_sum(count_intersection, count_gold)
-        example_count += inputs.shape[0]
-    avg_jaccard = total_jaccard / example_count
-    avg_precision = total_precision / example_count
-    avg_recall = total_recall / example_count
-    print('Segmentation results:')
-    print(f'Average Jaccard similarity: {avg_jaccard:.2%}')
-    print(f'Average precision: {avg_precision:.2%}')
-    print(f'Average recall: {avg_recall:.2%}')
-    print(f'Number of examples: {example_count}')
 
 
 def parse_args():

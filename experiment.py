@@ -2,7 +2,7 @@ from torch import optim
 from torch.utils.data.dataloader import DataLoader
 from torchvision.datasets import ImageFolder
 from multi_resolution_segmentation import MultiResolutionSegmentation, train_multi_segmentation
-from utils import train_transform, transform, to_device
+from utils import train_transform, transform, to_device, SegmentationDataset
 
 import argparse
 import numpy as np
@@ -111,6 +111,7 @@ def main():
     ny_train_set = ImageFolder(root=args.ny_train_dir, transform=train_transform)
     ny_train_loader = DataLoader(ny_train_set, batch_size=args.batch_size, shuffle=True, num_workers=4)
     
+    # ny_val_set = SegmentationDataset(args.ny_val_dir)
     ny_val_set = ImageFolder(root=args.ny_val_dir, transform=transform)
     ny_val_loader = DataLoader(ny_val_set, batch_size=args.batch_size, shuffle=True, num_workers=4)
 
