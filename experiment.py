@@ -48,7 +48,12 @@ def random_search(train_loader: DataLoader,
         metrics_round_1 = train_multi_segmentation(model, train_loader, val_loader, optimizer, num_epochs=1)
         # Round 2
         optimizer = optim.RMSprop(model.parameters(), alpha=0.9, momentum=0.9, lr=lr_round_2)
-        metrics_round_2 = train_multi_segmentation(model, ny_train_loader, ny_val_loader, optimizer, num_epochs=ny_num_epochs)
+        metrics_round_2 = train_multi_segmentation(model,
+                                                   ny_train_loader,
+                                                   ny_val_loader,
+                                                   optimizer,
+                                                   num_epochs=ny_num_epochs,
+                                                   val_loader_type='seg')
         results.append({
             'trial': t,
             'alpha': alpha,
@@ -72,9 +77,20 @@ def fine_tuning(models_metadata: list, train_loader: DataLoader, val_loader: Dat
 def print_results(results, round):
     for result in results:
         print(f"Trial {result['trial']}: alpha = {result['alpha']}, endpoints = {result['endpoints']}")
-        print(f"Precision: {result[round]['precision']:.2%}")
-        print(f"Recall: {result[round]['recall']:.2%}")
-        print(f"F1: {result[round]['f1']:.2%}")
+        print(f"Round {round}")
+        stats = result[round]
+        if 'precision' in stats:
+            print(f"Precision: {stats['precision']:.2%}")
+        if 'recall' in stats:
+            print(f"Recall: {stats['recall']:.2%}")
+        if 'f1' in stats:
+            print(f"F1: {stats['f1']:.2%}")
+        if 'avg_jaccard' in stats:
+            print(f"Average Jaccard similarity: {stats['avg_jaccard']:.2%}")
+        if 'avg_precision' in stats:
+            print(f"Average precision: {stats['avg_precision']:.2%}")
+        if 'avg_recall' in stats:
+            print(f"Average recall: {stats['avg_recall']:.2%}")
         print()
 
 def log_stats(results, log_file):
@@ -111,8 +127,8 @@ def main():
     ny_train_set = ImageFolder(root=args.ny_train_dir, transform=train_transform)
     ny_train_loader = DataLoader(ny_train_set, batch_size=args.batch_size, shuffle=True, num_workers=4)
     
-    # ny_val_set = SegmentationDataset(args.ny_val_dir)
-    ny_val_set = ImageFolder(root=args.ny_val_dir, transform=transform)
+    ny_val_set = SegmentationDataset(args.ny_val_dir)
+    # ny_val_set = ImageFolder(root=args.ny_val_dir, transform=transform)
     ny_val_loader = DataLoader(ny_val_set, batch_size=args.batch_size, shuffle=True, num_workers=4)
 
     results = random_search(train_loader,
@@ -124,7 +140,7 @@ def main():
                             ny_num_epochs=10)
     
     # Print results for top k trials w.r.t. performance on NY dataset
-    top_k = heapq.nlargest(3, results, key=lambda elt: elt['round_2']['f1'])
+    top_k = heapq.nlargest(3, results, key=lambda elt: elt['round_2']['avg_jaccard'])
     print_results(top_k, 'round_2')
 
     # Save model with best performance on NY dataset
