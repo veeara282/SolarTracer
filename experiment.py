@@ -10,8 +10,8 @@ import heapq
 import json
 
 # Use different learning rates
-lr_round_1 = 1e-3
-lr_round_2 = 3e-5
+lr_round_1 = 1e-3 # Initial learning rate used in DeepSolar paper (Yu et al. 2018)
+lr_round_2 = 3e-5 # Similar to 1e-5 used in https://keras.io/guides/transfer_learning/
 
 def random_search(train_loader: DataLoader,
                   val_loader: DataLoader,
@@ -50,32 +50,26 @@ def random_search(train_loader: DataLoader,
         # except for learning rate decay and epsilon
         optimizer = optim.RMSprop(model.parameters(), alpha=0.9, momentum=0.9, lr=lr_round_1)
         # Round 1
-        metrics_round_1 = train_multi_segmentation(model, train_loader, val_loader, optimizer, num_epochs=1)
+        round_1_results, round_1_training_history = \
+            train_multi_segmentation(model, train_loader, val_loader, optimizer, num_epochs=1)
         # Round 2
         model.set_alpha(alpha2)
         optimizer = optim.RMSprop(model.parameters(), alpha=0.9, momentum=0.9, lr=lr_round_2)
-        metrics_round_2 = train_multi_segmentation(model, ny_train_loader, ny_val_loader, optimizer, num_epochs=ny_num_epochs)
-        metrics_round_2.update(eval_segmentation(model, ny_val_loader_seg))
+        round_2_results, round_2_training_history = \
+            train_multi_segmentation(model, ny_train_loader, ny_val_loader, optimizer, num_epochs=ny_num_epochs)
+        round_2_results.update(eval_segmentation(model, ny_val_loader_seg))
         results.append({
             'trial': t,
             'alpha1': alpha1,
             'alpha2': alpha2,
             'endpoints': endpoints,
             'model': model.cpu(), # Get it off the GPU to conserve memory
-            'round_1': metrics_round_1,
-            'round_2': metrics_round_2
+            'round_1': round_1_results,
+            'round_1_training_history': round_1_training_history,
+            'round_2': round_2_results,
+            'round_2_training_history': round_2_training_history
         })
     return results
-
-def fine_tuning(models_metadata: list, train_loader: DataLoader, val_loader: DataLoader, num_epochs: int):
-    for i, data in enumerate(models_metadata):
-        model = to_device(data['model'])
-        optimizer = optim.RMSprop(model.parameters(), alpha=0.9, momentum=0.9, lr=lr_round_2)
-        metrics = train_multi_segmentation(model, train_loader, val_loader, optimizer, num_epochs=num_epochs)
-        # These should add/update the fields of the item in models_metadata
-        data['round_2'] = metrics
-        data['model'] = model.cpu()
-    return models_metadata
 
 def print_results(results, round):
     for result in results:

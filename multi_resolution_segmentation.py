@@ -144,14 +144,19 @@ def train_multi_segmentation(model: MultiResolutionSegmentation,
                              num_epochs: int = 3):
     # Don't train the backbone
     model.freeze_backbone()
+    history = []
     # Train the segmentation part of the neural network
     for epoch in trange(num_epochs, desc=f'Training'):
-        train_or_eval(model, train_loader, optimizer, scaler)
+        result = train_or_eval(model, train_loader, optimizer, scaler)
+        history.append({
+            'epoch': epoch,
+            **result
+        })
     # Evaluate on validation set once at the end
     if val_loader_type == 'class':
-        return train_or_eval(model, val_loader, scaler=scaler)
+        return train_or_eval(model, val_loader, scaler=scaler), history
     elif val_loader_type == 'seg':
-        return eval_segmentation(model, val_loader)
+        return eval_segmentation(model, val_loader), history
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train and store the model')
