@@ -13,14 +13,14 @@ import argparse
 class ClassActivationMap2d(nn.Module):
     '''Generates a class activation map from the input tensor (format: N * C * H * W).'''
 
-    def __init__(self, in_channels: int, out_channels: int, input_res, output_res=None):
+    def __init__(self, in_channels: int, out_channels: int, input_res, output_res=None, upsampling_mode='nearest'):
         super(ClassActivationMap2d, self).__init__()
         # Linear (1x1 convolution) layer to transform input feature maps into CAMs
         self.linear = nn.Conv2d(in_channels, out_channels, kernel_size=1)
         # Average pooling if not generating CAM
         self.avgpool = nn.AvgPool2d(input_res)
         # Upsample to a certain size (optional)
-        self.upsample = nn.Upsample(size=output_res) if output_res else None
+        self.upsample = nn.Upsample(size=output_res, mode=upsampling_mode) if output_res else None
     
     def forward(self, inputs, return_cam=False):
         if return_cam:
@@ -47,6 +47,7 @@ class MultiResolutionSegmentation(nn.Module):
         backbone = kwargs.get('backbone', 'efficientnet-b0')
         endpoints = kwargs.get('endpoints', [1, 2, 3, 4])
         pos_class_weight = kwargs.get('pos_class_weight', 2.0)
+        upsampling_mode = kwargs.get('upsampling_mode', 'nearest')
         # Use EfficientNet classifier as a backbone
         if from_pretrained:
             self.backbone = EfficientNet.from_pretrained(backbone, num_classes=2)
@@ -66,7 +67,7 @@ class MultiResolutionSegmentation(nn.Module):
             self.seg_branches[f'reduction_{endpoint}'] = seg_branch
             # Create CAM layer for endpoint
             in_res = cam_resolution(endpoint=endpoint)
-            self.activation_map[f'reduction_{endpoint}'] = ClassActivationMap2d(16, 2, in_res, 112)
+            self.activation_map[f'reduction_{endpoint}'] = ClassActivationMap2d(16, 2, in_res, 112, upsampling_mode)
 
         # Softmax over channels if outputting CAM
         self.softmax = nn.Softmax(dim=1)

@@ -1,3 +1,6 @@
+import random
+import numpy as np
+import torch
 from torch import optim
 from torch.utils.data.dataloader import DataLoader
 from torchvision.datasets import ImageFolder
@@ -12,6 +15,11 @@ import json
 # Use different learning rates
 lr_round_1 = 1e-3 # Initial learning rate used in DeepSolar paper (Yu et al. 2018)
 lr_round_2 = 3e-5 # Similar to 1e-5 used in https://keras.io/guides/transfer_learning/
+
+def seed_global_rngs(seed):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
 
 def random_search(train_loader: DataLoader,
                   val_loader: DataLoader,
@@ -35,6 +43,8 @@ def random_search(train_loader: DataLoader,
         # Keep generating new random integers until at least one of them is 1
         while not np.any(endpoints_values[t]):
             endpoints_values[t] = rng.integers(0, 2, 4)
+    # Randomly choose to upsample using the 'nearest' or 'bilinear' strategy
+    upsampling_mode_values = rng.choice(['nearest', 'bilinear'], num_trials)
     # Store results and print them out at the end
     results = []
     # Start random search
@@ -43,6 +53,10 @@ def random_search(train_loader: DataLoader,
         alpha2 = alpha2_values[t]
         # Class constructor expects a list of endpoint numbers, not a bit vector
         endpoints = [k + 1 for k in range(4) if endpoints_values[t, k]]
+        # Choose an upsampling mode
+        upsampling_mode = upsampling_mode_values[t]
+        # Re-seed the global RNGs before each trial to improve reproducibility
+        seed_global_rngs(seed)
         # Create and train model
         model = to_device(MultiResolutionSegmentation(pos_class_weight=alpha1, endpoints=endpoints))
         print(f'Trial {t}: alpha1 = {alpha1}, alpha2 = {alpha2}, endpoints = {endpoints}')
@@ -63,6 +77,7 @@ def random_search(train_loader: DataLoader,
             'alpha1': alpha1,
             'alpha2': alpha2,
             'endpoints': endpoints,
+            'upsampling_mode': upsampling_mode,
             'model': model.cpu(), # Get it off the GPU to conserve memory
             'round_1': round_1_results,
             'round_1_training_history': round_1_training_history,

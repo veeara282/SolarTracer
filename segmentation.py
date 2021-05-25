@@ -1,6 +1,4 @@
 # TODO Implement CAM-GLWT for EfficientNet
-import random
-import numpy as np
 import torch
 from torch import nn, optim
 from torch.utils.data.dataloader import DataLoader
@@ -12,13 +10,6 @@ from efficientnet_pytorch.model import EfficientNet
 import argparse
 
 from utils import train_transform, transform, train_or_eval, to_device
-
-def make_deterministic(seed=1337):
-    random.seed(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    torch.set_deterministic(True)
-    torch.backends.cudnn.benchmark = False
 
 def cam_resolution(backbone='efficientnet-b0', endpoint=1):
     if endpoint in range(1, 6):
