@@ -31,9 +31,11 @@ def random_search(train_loader: DataLoader,
                   ny_num_epochs: int = 10):
     rng = np.random.default_rng(seed)
     # Set alpha to a higher value during training on DeepSolar dataset because it's unbalanced
-    alpha1_values = rng.uniform(4, 16, num_trials)
+    # Draw from reciprocal distribution over [4, 16]
+    alpha1_values = 2**rng.uniform(2, 4, num_trials)
     # Set alpha to a lower value during fine tuning
-    alpha2_values = rng.uniform(1, 8, num_trials)
+    # Draw from reciprocal distribution over [1, 8]
+    alpha2_values = 2**rng.uniform(0, 3, num_trials)
     # To generate combinations of endpoints:
     # 1. For each trial, generate 4 random integers in {0, 1}
     # 2. If all of them are 0, generate another 4 random integers
@@ -43,7 +45,7 @@ def random_search(train_loader: DataLoader,
         # Keep generating new random integers until at least one of them is 1
         while not np.any(endpoints_values[t]):
             endpoints_values[t] = rng.integers(0, 2, 4)
-    # Randomly choose to upsample using the 'nearest' or 'bilinear' strategy
+    # Choose the 'nearest' or 'bilinear' upsampling mode uniformly at random
     upsampling_mode_values = rng.choice(['nearest', 'bilinear'], num_trials)
     # Store results and print them out at the end
     results = []
