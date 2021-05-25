@@ -118,6 +118,7 @@ def parse_args():
     parser.add_argument('-n', '--num-trials', type=int, default=10)
     parser.add_argument('--seed', type=int, default=5670)
     parser.add_argument('-b', '--batch-size', type=int, default=48)
+    parser.add_argument('-e', '--num-epochs', type=int, default=10)
     # parser.add_argument('-m', '--mixed-precision', action='store_true')
     parser.add_argument('--train-dir', default='./SPI_train/')
     parser.add_argument('--val-dir', default='./SPI_val/')
@@ -151,7 +152,7 @@ def main():
                             ny_val_loader_seg,
                             num_trials=args.num_trials,
                             seed=args.seed,
-                            ny_num_epochs=10)
+                            ny_num_epochs=args.num_epochs)
     
     # Print results for top k trials w.r.t. performance on NY dataset
     top_k = heapq.nlargest(3, results, key=lambda elt: elt['round_2']['avg_jaccard'])
