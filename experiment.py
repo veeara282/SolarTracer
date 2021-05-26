@@ -165,6 +165,7 @@ def main():
     best_model = best_trial['model']
 
     # Run test round
+    print("Now testing the best model on the test set:\n")
     ny_test_set = ImageFolder(root=args.ny_test_dir, transform=transform, is_valid_file=is_regular_img)
     ny_test_loader = DataLoader(ny_test_set, batch_size=args.batch_size, shuffle=True, num_workers=4)
     ny_test_set_seg = SegmentationDataset(args.ny_test_dir)
