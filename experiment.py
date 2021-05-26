@@ -5,7 +5,7 @@ from torch import optim
 from torch.utils.data.dataloader import DataLoader
 from torchvision.datasets import ImageFolder
 from multi_resolution_segmentation import MultiResolutionSegmentation, train_multi_segmentation
-from utils import train_transform, transform, to_device, SegmentationDataset, eval_segmentation, is_regular_img
+from utils import train_transform, transform, to_device, SegmentationDataset, train_or_eval, eval_segmentation, is_regular_img
 
 import argparse
 import numpy as np
@@ -107,11 +107,14 @@ def print_results(results, round):
             print(f"Average recall: {stats['avg_recall']:.2%}")
         print()
 
-def log_stats(results, log_file):
+def log_stats(train_results, test_results, log_file):
     # Make a copy of the results dicts minus the model key
-    results_without_models = [{k: v for k, v in res.items() if k != 'model'} for res in results]
+    results_without_models = [{k: v for k, v in res.items() if k != 'model'} for res in train_results]
     with open(log_file, 'w') as f:
-        json.dump(results_without_models, f, indent=4)
+        json.dump({
+            'train_results': results_without_models,
+            'test_results': test_results
+            }, f, indent=4)
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train and store the model')
@@ -126,6 +129,7 @@ def parse_args():
     parser.add_argument('--val-dir', default='./SPI_val/')
     parser.add_argument('--ny-train-dir', default='./NY_dataset/train/')
     parser.add_argument('--ny-val-dir', default='./NY_dataset/val/')
+    parser.add_argument('--ny-test-dir', default='./NY_dataset/eval/')
     return parser.parse_args()
 
 def main():
@@ -147,24 +151,41 @@ def main():
     ny_val_set_seg = SegmentationDataset(args.ny_val_dir)
     ny_val_loader_seg = DataLoader(ny_val_set_seg, batch_size=args.batch_size, shuffle=True, num_workers=4)
 
-    results = random_search(train_loader,
-                            val_loader,
-                            ny_train_loader,
-                            ny_val_loader,
-                            ny_val_loader_seg,
-                            num_trials=args.num_trials,
-                            seed=args.seed,
-                            ny_num_epochs=args.num_epochs)
+    train_results = random_search(train_loader,
+                                  val_loader,
+                                  ny_train_loader,
+                                  ny_val_loader,
+                                  ny_val_loader_seg,
+                                  num_trials=args.num_trials,
+                                  seed=args.seed,
+                                  ny_num_epochs=args.num_epochs)
     
-    # Print results for top k trials w.r.t. performance on NY dataset
-    top_k = heapq.nlargest(3, results, key=lambda elt: elt['round_2']['avg_jaccard'])
-    print_results(top_k, 'round_2')
+    # Select model with best performance on NY dataset
+    best_trial = max(train_results, key=lambda elt: elt['round_2']['avg_jaccard'])
+    best_model = best_trial['model']
 
-    # Save model with best performance on NY dataset
-    best_model = top_k[0]['model']
+    # Run test round
+    ny_test_set = ImageFolder(root=args.ny_test_dir, transform=transform, is_valid_file=is_regular_img)
+    ny_test_loader = DataLoader(ny_test_set, batch_size=args.batch_size, shuffle=True, num_workers=4)
+    ny_test_set_seg = SegmentationDataset(args.ny_test_dir)
+    ny_test_loader_seg = DataLoader(ny_test_set_seg, batch_size=args.batch_size, shuffle=True, num_workers=4)
+
+    # Move back to GPU
+    best_model = to_device(best_model)
+    cls_metrics = train_or_eval(best_model, ny_test_loader)
+    seg_metrics = eval_segmentation(best_model, ny_test_loader_seg)
+
+    # Store these metrics in separate part of JSON
+    wanted_keys = {'trial', 'alpha1', 'alpha2', 'endpoints', 'upsampling_mode'}
+    test_results = {
+        **{k: v for k, v in best_trial.items() if k in wanted_keys},
+        **cls_metrics,
+        **seg_metrics
+    }
+
     best_model.to_save_file(args.out)
 
-    log_stats(results, args.logfile)
+    log_stats(train_results, test_results, args.logfile)
 
 if __name__ == '__main__':
     main()
