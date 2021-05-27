@@ -44,7 +44,7 @@ def main():
         with to_pil_image(pred_cam) as cam_img:
             cam_path = os.path.join(args.out, f"{img_file}_cam{img_ext}")
             cam_img.save(cam_path)
-        with to_pil_image(pred_mask, mode='1') as mask_img:
+        with to_pil_image(pred_mask) as mask_img:
             mask_path = os.path.join(args.out, f"{img_file}_mask{img_ext}")
             mask_img.save(mask_path)
 
