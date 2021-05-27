@@ -35,7 +35,7 @@ def main():
         # Do inference on the current image
         img, _ = dataset[i]
         pred_cam = torch.squeeze(model(img, return_cam=True), 0)
-        pred_mask = threshold(pred_cam)
+        pred_mask = threshold(pred_cam) * 255
         # Get the filename and extension
         img_path, _ = dataset.samples[i]
         _, img_filename = os.path.split(img_path)
