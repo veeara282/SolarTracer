@@ -47,3 +47,6 @@ def main():
         with to_pil_image(pred_mask) as mask_img:
             mask_path = os.path.join(args.out, f"{img_file}_mask{img_ext}")
             mask_img.save(mask_path)
+
+if __name__ == '__main__':
+    main()
